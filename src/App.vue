@@ -1,27 +1,49 @@
 <template>
-  <div class="container">
-    <h1>拼豆图纸生成器</h1>
-    
-    <UploadSection @image-uploaded="handleImageUploaded" />
-    
-    <Controls 
-      v-model:gridSize="gridSize"
-      v-model:colorCount="colorCount"
-      v-model:brand="selectedBrand"
-      v-model:showNumbers="showNumbers"
-      @generate="generatePattern"
-      @download="downloadPattern"
-    />
-    
-    <PreviewSection 
-      ref="previewSection"
-      :originalImageUrl="originalImageUrl"
-    />
-    
-    <PatternInfo 
-      :infoText="infoText"
-      :colorStats="colorStats"
-    />
+  <div class="app-container">
+    <el-container>
+      <el-header height="60px" class="header">
+        <div class="header-content">
+          <el-button 
+            type="primary" 
+            circle 
+            size="small" 
+            @click="toggleSidebar"
+            class="collapse-btn"
+          >
+            <template v-if="isCollapsed">
+              <el-icon><Expand /></el-icon>
+            </template>
+            <template v-else>
+              <el-icon><Fold /></el-icon>
+            </template>
+          </el-button>
+          <h1 class="title">拼豆图纸生成器</h1>
+        </div>
+      </el-header>
+      <el-container>
+        <el-aside :width="isCollapsed ? '0px' : '300px'" class="aside" :class="{ 'collapsed': isCollapsed }">
+          <UploadSection @image-uploaded="handleImageUploaded" />
+          <Controls 
+            v-model:gridSize="gridSize"
+            v-model:colorCount="colorCount"
+            v-model:brand="selectedBrand"
+            v-model:showNumbers="showNumbers"
+            @generate="generatePattern"
+            @download="downloadPattern"
+          />
+          <PatternInfo 
+            :infoText="infoText"
+            :colorStats="colorStats"
+          />
+        </el-aside>
+        <el-main class="main">
+          <PreviewSection 
+            ref="previewSection"
+            :originalImageUrl="originalImageUrl"
+          />
+        </el-main>
+      </el-container>
+    </el-container>
   </div>
 </template>
 
@@ -32,6 +54,7 @@ import Controls from './components/Controls.vue';
 import PreviewSection from './components/PreviewSection.vue';
 import PatternInfo from './components/PatternInfo.vue';
 import colorSystemMapping from '../src/colorMap/colorSystemMapping.json';
+import { Fold, Expand } from '@element-plus/icons-vue';
 
 // 响应式数据
 const originalImage = ref(null);
@@ -44,6 +67,12 @@ const previewSection = ref(null);
 const selectedBrand = ref('MARD');
 const showNumbers = ref(false);
 const colorStats = ref([]);
+const isCollapsed = ref(false);
+
+// 切换侧边栏
+const toggleSidebar = () => {
+  isCollapsed.value = !isCollapsed.value;
+};
 
 // 加载颜色数据
 const loadColorData = () => {
@@ -314,24 +343,138 @@ loadColorData();
   box-sizing: border-box;
 }
 
-body {
-  font-family: Arial, sans-serif;
-  background-color: #f0f0f0;
-  padding: 20px;
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: 'Microsoft YaHei', Arial, sans-serif;
+  background-color: #f0f2f5;
 }
 
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
+#app {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.app-container {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.header {
+  background: linear-gradient(135deg, #409EFF 0%, #69c0ff 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.header:hover {
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.15);
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 0 20px;
+}
+
+.collapse-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.collapse-btn:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.1);
+}
+
+.title {
+  font-size: 28px;
+  font-weight: bold;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  letter-spacing: 2px;
+}
+
+.aside {
   background-color: white;
-  border-radius: 10px;
-  padding: 30px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  border-right: 1px solid #e4e7ed;
+  padding: 20px;
+  overflow-y: auto;
+  box-shadow: 2px 0 12px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  box-sizing: border-box;
 }
 
-h1 {
-  text-align: center;
-  color: #333;
-  margin-bottom: 30px;
+.aside:hover {
+  box-shadow: 2px 0 16px 0 rgba(0, 0, 0, 0.08);
+}
+
+.aside.collapsed {
+  width: 0 !important;
+  padding: 0;
+  border-right: none;
+  overflow: hidden;
+}
+
+.aside.collapsed * {
+  display: none;
+}
+
+.main {
+  background-color: #f0f2f5;
+  padding: 20px;
+  overflow: auto;
+  background-image: linear-gradient(45deg, #f5f7fa 25%, transparent 25%, transparent 75%, #f5f7fa 75%, #f5f7fa),
+                    linear-gradient(45deg, #f5f7fa 25%, transparent 25%, transparent 75%, #f5f7fa 75%, #f5f7fa);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.el-container {
+  height: 100%;
+  width: 100%;
+  min-height: 100%;
+}
+
+.el-container.is-vertical {
+  height: 100%;
+  min-height: 100%;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 </style>

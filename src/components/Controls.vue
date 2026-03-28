@@ -1,131 +1,235 @@
 <template>
-  <div class="controls">
-    <div class="control-group">
-      <label for="grid-size">网格大小:</label>
-      <input type="range" id="grid-size" v-model.number="localGridSize" min="10" max="100">
-      <span>{{ localGridSize }}</span>
-    </div>
-    <div class="control-group">
-      <label for="color-count">颜色数量:</label>
-      <input type="range" id="color-count" v-model.number="localColorCount" min="2" max="20">
-      <span>{{ localColorCount }}</span>
-    </div>
-    <div class="control-group">
-      <label for="brand">拼豆品牌:</label>
-      <select id="brand" v-model="localBrand">
-        <option value="MARD">MARD</option>
-        <option value="COCO">COCO</option>
-        <option value="漫漫">漫漫</option>
-        <option value="盼盼">盼盼</option>
-        <option value="咪小窝">咪小窝</option>
-      </select>
-    </div>
-    <div class="control-group">
-      <label for="show-numbers">显示颜色编号:</label>
-      <input type="checkbox" id="show-numbers" v-model="localShowNumbers">
-    </div>
-    <button @click="generate" id="generate-btn">生成图纸</button>
-    <button @click="download" id="download-btn">下载图纸</button>
+  <div class="controls-container">
+    <!-- 标题部分 -->
+    <h3 class="section-title">
+      <el-icon class="title-icon">
+        <Setting />
+      </el-icon>
+      参数设置
+    </h3>
+
+    <el-card class="controls-card" :body-style="{ padding: '0px' }">
+      <div class="form-wrapper">
+        <el-form label-width="80px" label-position="left">
+
+          <!-- 网格大小 -->
+          <el-form-item label="网格大小">
+            <div class="slider-row">
+              <span class="status-circle"></span>
+              <el-slider v-model="gridSize" :min="1" :max="100" :step="1" show-stops class="custom-slider" />
+              <span class="value-label">{{ gridSize }}</span>
+            </div>
+          </el-form-item>
+
+          <!-- 颜色数量 -->
+          <el-form-item label="颜色数量">
+            <div class="slider-row">
+              <span class="status-circle"></span>
+              <el-slider v-model="colorCount" :min="1" :max="50" :step="1" show-stops class="custom-slider" />
+              <span class="value-label">{{ colorCount }}</span>
+            </div>
+          </el-form-item>
+
+          <!-- 拼豆品牌 -->
+          <el-form-item label="拼豆品牌">
+            <el-select v-model="selectedBrand" placeholder="请选择" class="custom-select">
+              <el-option label="MARD" value="MARD" />
+              <el-option label="COCO" value="COCO" />
+              <el-option label="漫漫" value="漫漫" />
+            </el-select>
+          </el-form-item>
+
+          <!-- 显示编号 -->
+          <el-form-item label="显示编号">
+            <div class="switch-wrapper">
+              <span :class="['switch-label', !showNumbers ? 'active-text' : '']">隐藏</span>
+              <el-switch v-model="showNumbers" />
+              <span :class="['switch-label', showNumbers ? 'active-text' : '']">显示</span>
+            </div>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <!-- 底部按钮 -->
+      <div class="button-footer">
+        <el-button type="primary" class="btn-generate" @click="generatePattern">
+          <el-icon>
+            <MagicStick />
+          </el-icon> 生成图纸
+        </el-button>
+        <el-button type="warning" class="btn-download" @click="downloadPattern">
+          <el-icon>
+            <Download />
+          </el-icon> 下载
+        </el-button>
+      </div>
+    </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { computed } from 'vue';
+import { MagicStick, Download, Setting } from '@element-plus/icons-vue';
 
-// 定义 props
 const props = defineProps({
-  gridSize: {
-    type: Number,
-    default: 30
-  },
-  colorCount: {
-    type: Number,
-    default: 8
-  },
-  brand: {
-    type: String,
-    default: 'MARD'
-  },
-  showNumbers: {
-    type: Boolean,
-    default: false
-  }
+  gridSize: { type: Number, default: 10 },
+  colorCount: { type: Number, default: 8 },
+  brand: { type: String, default: 'MARD' },
+  showNumbers: { type: Boolean, default: false }
 });
 
-// 定义 emit
 const emit = defineEmits(['update:gridSize', 'update:colorCount', 'update:brand', 'update:showNumbers', 'generate', 'download']);
 
-// 本地状态
-const localGridSize = ref(props.gridSize);
-const localColorCount = ref(props.colorCount);
-const localBrand = ref(props.brand);
-const localShowNumbers = ref(props.showNumbers);
-
-// 监听本地状态变化，更新父组件
-watch(localGridSize, (newValue) => {
-  emit('update:gridSize', newValue);
+// 响应式绑定
+const gridSize = computed({
+  get: () => props.gridSize,
+  set: (val) => emit('update:gridSize', val)
+});
+const colorCount = computed({
+  get: () => props.colorCount,
+  set: (val) => emit('update:colorCount', val)
+});
+const selectedBrand = computed({
+  get: () => props.brand,
+  set: (val) => emit('update:brand', val)
+});
+const showNumbers = computed({
+  get: () => props.showNumbers,
+  set: (val) => emit('update:showNumbers', val)
 });
 
-watch(localColorCount, (newValue) => {
-  emit('update:colorCount', newValue);
-});
-
-watch(localBrand, (newValue) => {
-  emit('update:brand', newValue);
-});
-
-watch(localShowNumbers, (newValue) => {
-  emit('update:showNumbers', newValue);
-});
-
-// 方法
-const generate = () => {
-  emit('generate');
-};
-
-const download = () => {
-  emit('download');
-};
+const generatePattern = () => emit('generate');
+const downloadPattern = () => emit('download');
 </script>
 
 <style scoped>
-.controls {
-  text-align: center;
-  margin-bottom: 30px;
+.controls-container {
+  width: 100%;
+  margin-bottom: 24px;
 }
 
-.control-group {
-  margin: 10px 0;
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #303133;
+  margin-bottom: 16px;
 }
 
-label {
-  display: inline-block;
-  width: 120px;
+.title-icon {
+  font-size: 20px;
+  color: #409eff;
+}
+
+.controls-card {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.controls-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.1);
+}
+
+.form-wrapper {
+  padding: 20px;
+  background: linear-gradient(135deg, #f6f8fa 0%, #e9ecef 100%);
+}
+
+.slider-row,
+.item-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.custom-slider {
+  flex: 1;
+}
+
+.value-label {
+  min-width: 36px;
   text-align: right;
-  margin-right: 10px;
+  font-weight: 600;
+  color: #303133;
 }
 
-input[type="range"] {
-  width: 200px;
+.status-circle {
+  width: 10px;
+  height: 10px;
+  background-color: #409eff;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-select {
-  padding: 5px;
-  border-radius: 3px;
-  border: 1px solid #ddd;
+.custom-input-number {
+  width: 120px;
 }
 
-button {
-  padding: 8px 16px;
-  background-color: #008CBA;
-  color: white;
+:deep(.el-input-number.is-controls-right .el-input__inner) {
+  text-align: center;
+  padding-left: 10px;
+  padding-right: 40px;
+}
+
+.custom-select {
+  width: 100%;
+}
+
+:deep(.el-input__wrapper) {
+  border-radius: 8px;
+}
+
+.switch-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.switch-label {
+  font-size: 14px;
+  color: #909399;
+  transition: color 0.3s;
+}
+
+.switch-label.active-text {
+  color: #409eff;
+}
+
+.button-footer {
+  padding: 16px;
+  display: flex;
+  gap: 15px;
+  background-color: #fff;
+  border-top: 1px solid #e9ecef;
+}
+
+.btn-generate,
+.btn-download {
+  flex: 1;
+  height: 44px;
+  font-size: 15px;
+  border-radius: 8px;
   border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  margin: 0 5px;
 }
 
-button:hover {
-  background-color: #007B9E;
+.btn-generate {
+  background-color: #409eff;
+}
+
+.btn-download {
+  background-color: #e6a23c;
+}
+
+:deep(.el-form-item__label) {
+  font-size: 16px;
+  color: #606266;
+  font-weight: 500;
 }
 </style>
