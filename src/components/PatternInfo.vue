@@ -77,7 +77,7 @@ const props = defineProps({
 }
 
 .title-icon {
-  font-size: 20px;
+  font-size: 18px;
   color: #409EFF;
 }
 

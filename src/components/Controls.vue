@@ -12,19 +12,43 @@
       <div class="form-wrapper">
         <el-form label-width="80px" label-position="left">
 
-          <!-- 网格大小 -->
-          <el-form-item label="网格大小">
+          <!-- 网格宽度 -->
+          <el-form-item label="宽度">
             <div class="slider-row">
-              <span class="status-circle"></span>
-              <el-slider v-model="gridSize" :min="1" :max="100" :step="1" show-stops class="custom-slider" />
-              <span class="value-label">{{ gridSize }}</span>
+              <el-input-number
+                v-model="gridWidth"
+                :min="1"
+                :max="100"
+                :step="1"
+                controls-position="right"
+                :controls="true"
+                size="small"
+                class="custom-input-number"
+              />
+              <span class="value-label">{{ gridWidth }}</span>
+            </div>
+          </el-form-item>
+
+          <!-- 网格高度 -->
+          <el-form-item label="高度">
+            <div class="slider-row">
+              <el-input-number
+                v-model="gridHeight"
+                :min="1"
+                :max="100"
+                :step="1"
+                controls-position="right"
+                :controls="true"
+                size="small"
+                class="custom-input-number"
+              />
+              <span class="value-label">{{ gridHeight }}</span>
             </div>
           </el-form-item>
 
           <!-- 颜色数量 -->
           <el-form-item label="颜色数量">
             <div class="slider-row">
-              <span class="status-circle"></span>
               <el-slider v-model="colorCount" :min="1" :max="50" :step="1" show-stops class="custom-slider" />
               <span class="value-label">{{ colorCount }}</span>
             </div>
@@ -72,18 +96,23 @@ import { computed } from 'vue';
 import { MagicStick, Download, Setting } from '@element-plus/icons-vue';
 
 const props = defineProps({
-  gridSize: { type: Number, default: 10 },
+  gridWidth: { type: Number, default: 30 },
+  gridHeight: { type: Number, default: 30 },
   colorCount: { type: Number, default: 8 },
   brand: { type: String, default: 'MARD' },
   showNumbers: { type: Boolean, default: false }
 });
 
-const emit = defineEmits(['update:gridSize', 'update:colorCount', 'update:brand', 'update:showNumbers', 'generate', 'download']);
+const emit = defineEmits(['update:gridWidth', 'update:gridHeight', 'update:colorCount', 'update:brand', 'update:showNumbers', 'generate', 'download']);
 
 // 响应式绑定
-const gridSize = computed({
-  get: () => props.gridSize,
-  set: (val) => emit('update:gridSize', val)
+const gridWidth = computed({
+  get: () => props.gridWidth,
+  set: (val) => emit('update:gridWidth', val)
+});
+const gridHeight = computed({
+  get: () => props.gridHeight,
+  set: (val) => emit('update:gridHeight', val)
 });
 const colorCount = computed({
   get: () => props.colorCount,
@@ -119,7 +148,7 @@ const downloadPattern = () => emit('download');
 }
 
 .title-icon {
-  font-size: 20px;
+  font-size: 18px;
   color: #409eff;
 }
 
@@ -158,14 +187,6 @@ const downloadPattern = () => emit('download');
   text-align: right;
   font-weight: 600;
   color: #303133;
-}
-
-.status-circle {
-  width: 10px;
-  height: 10px;
-  background-color: #409eff;
-  border-radius: 50%;
-  flex-shrink: 0;
 }
 
 .custom-input-number {

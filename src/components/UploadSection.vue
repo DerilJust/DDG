@@ -1,43 +1,32 @@
 <template>
   <div class="upload-section">
     <h3 class="section-title">
-      <el-icon class="title-icon"><UploadFilled /></el-icon>
+      <el-icon class="title-icon">
+        <UploadFilled />
+      </el-icon>
       图片上传
     </h3>
     <el-card class="upload-card" shadow="hover">
       <div class="upload-content">
-        <el-upload
-          class="upload-demo"
-          :auto-upload="false"
-          :on-change="handleFileChange"
-          :show-file-list="false"
-          accept="image/*"
-        >
+        <el-upload class="upload-demo" :auto-upload="false" :on-change="handleFileChange" :show-file-list="false"
+          accept="image/*">
           <el-button type="primary" size="large" class="upload-btn" :icon="UploadFilled">
             选择图片
           </el-button>
         </el-upload>
-        <el-button 
-          type="success" 
-          size="large" 
-          class="upload-btn" 
-          @click="uploadImage"
-          :disabled="!originalImage"
-          :icon="Check"
-        >
-          上传图片
+        <el-button type="success" size="large" class="upload-btn" @click="showCropper" :disabled="!originalImage"
+          :icon="Check">
+          上传并裁剪
         </el-button>
       </div>
+
       <div v-if="originalImageUrl" class="image-preview">
-        <el-image
-          :src="originalImageUrl"
-          fit="cover"
-          class="preview-img"
-          :preview-src-list="[originalImageUrl]"
-        >
+        <el-image :src="originalImageUrl" fit="cover" class="preview-img" :preview-src-list="[originalImageUrl]">
           <template #error>
             <div class="image-error">
-              <el-icon class="error-icon"><Picture /></el-icon>
+              <el-icon class="error-icon">
+                <Picture />
+              </el-icon>
               <div class="error-text">图片加载失败</div>
             </div>
           </template>
@@ -48,34 +37,54 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { UploadFilled, Check, Picture } from '@element-plus/icons-vue';
 
 // 定义 props
-const emit = defineEmits(['image-uploaded']);
+const props = defineProps({
+  imageUrl: {
+    type: String,
+    default: ''
+  }
+});
+const emit = defineEmits(['image-uploaded', 'image-selected']);
 
 // 响应式数据
 const originalImage = ref(null);
-const originalImageUrl = ref('');
+const previewUrl = ref(props.imageUrl);
+
+watch(() => props.imageUrl, (value) => {
+  previewUrl.value = value;
+});
 
 // 处理文件选择
 const handleFileChange = (file) => {
   originalImage.value = file.raw;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    previewUrl.value = e.target.result;
+  };
+  reader.readAsDataURL(file.raw);
 };
 
-// 上传图片
-const uploadImage = () => {
+// 显示裁剪器
+const showCropper = () => {
   if (!originalImage.value) {
     return;
   }
-  
+
   const reader = new FileReader();
   reader.onload = (e) => {
-    originalImageUrl.value = e.target.result;
-    emit('image-uploaded', {
-      file: originalImage.value,
-      url: e.target.result
-    });
+    previewUrl.value = e.target.result;
+    const img = new Image();
+    img.onload = () => {
+      emit('image-selected', {
+        imageData: img,
+        imageUrl: e.target.result,
+        originalFile: originalImage.value
+      });
+    };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(originalImage.value);
 };
@@ -97,7 +106,7 @@ const uploadImage = () => {
 }
 
 .title-icon {
-  font-size: 20px;
+  font-size: 18px;
   color: #409EFF;
 }
 

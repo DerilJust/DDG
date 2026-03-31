@@ -3,60 +3,110 @@
     <el-card class="preview-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          <el-icon class="header-icon"><Picture /></el-icon>
-          <span>原始图片</span>
-        </div>
-      </template>
-      <div class="image-container">
-        <el-image
-          v-if="originalImageUrl"
-          :src="originalImageUrl"
-          fit="contain"
-          class="original-image"
-          :preview-src-list="[originalImageUrl]"
-        >
-          <template #error>
-            <div class="image-error">
-              <el-icon class="error-icon"><Picture /></el-icon>
-              <div class="error-text">图片加载失败</div>
-            </div>
-          </template>
-        </el-image>
-        <div v-else class="image-placeholder">
-          <el-icon class="placeholder-icon"><Upload /></el-icon>
-          <div class="placeholder-text">请上传图片</div>
-        </div>
-      </div>
-    </el-card>
-    
-    <el-card class="preview-card" shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <el-icon class="header-icon"><Grid /></el-icon>
+          <el-icon class="header-icon">
+            <Grid />
+          </el-icon>
           <span>拼豆图纸</span>
         </div>
       </template>
       <div class="canvas-container">
-        <canvas ref="patternCanvas" id="pattern-canvas" class="pattern-canvas"></canvas>
+        <canvas ref="patternCanvas" id="pattern-canvas" class="pattern-canvas" @pointerdown="handlePointerDown"
+          @pointermove="handlePointerMove" @pointerup="handlePointerUp" @pointerleave="handlePointerUp"></canvas>
       </div>
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
-import { Picture, Upload, Grid } from '@element-plus/icons-vue';
+import { ref, watch } from 'vue';
+import { Grid } from '@element-plus/icons-vue';
 
 // 定义 props
 const props = defineProps({
   originalImageUrl: {
     type: String,
     default: ''
+  },
+  gridWidth: {
+    type: Number,
+    default: 30
+  },
+  gridHeight: {
+    type: Number,
+    default: 30
+  },
+  cellSize: {
+    type: Number,
+    default: 10
+  },
+  axisMargin: {
+    type: Number,
+    default: 12
+  },
+  editMode: {
+    type: Boolean,
+    default: false
   }
 });
+const emit = defineEmits(['cell-edit']);
 
 // 响应式数据
 const patternCanvas = ref(null);
+const pointerDown = ref(false);
+const lastEdited = ref({ x: -1, y: -1 });
+
+const getCanvasPointerPos = (e) => {
+  if (!patternCanvas.value) return { x: 0, y: 0 };
+  const rect = patternCanvas.value.getBoundingClientRect();
+  const scaleX = patternCanvas.value.width / rect.width;
+  const scaleY = patternCanvas.value.height / rect.height;
+  return {
+    x: (e.clientX - rect.left) * scaleX,
+    y: (e.clientY - rect.top) * scaleY
+  };
+};
+
+const getGridCell = (e) => {
+  const pointer = getCanvasPointerPos(e);
+  const x = Math.floor((pointer.x - props.axisMargin) / props.cellSize);
+  const y = Math.floor((pointer.y - props.axisMargin) / props.cellSize);
+  const inGrid = x >= 0 && x < props.gridWidth && y >= 0 && y < props.gridHeight;
+  return { x, y, inGrid };
+};
+
+const handleCellEdit = (e) => {
+  if (!props.editMode) return;
+  const { x, y, inGrid } = getGridCell(e);
+  if (!inGrid) return;
+  if (lastEdited.value.x === x && lastEdited.value.y === y) return;
+  lastEdited.value = { x, y };
+  emit('cell-edit', { gridX: x, gridY: y });
+};
+
+const handlePointerDown = (e) => {
+  if (!props.editMode || !patternCanvas.value) return;
+  e.preventDefault();
+  pointerDown.value = true;
+  if (patternCanvas.value.setPointerCapture) {
+    patternCanvas.value.setPointerCapture(e.pointerId);
+  }
+  handleCellEdit(e);
+};
+
+const handlePointerMove = (e) => {
+  if (!props.editMode || !pointerDown.value) return;
+  e.preventDefault();
+  handleCellEdit(e);
+};
+
+const handlePointerUp = (e) => {
+  if (!props.editMode) return;
+  pointerDown.value = false;
+  lastEdited.value = { x: -1, y: -1 };
+  if (patternCanvas.value && patternCanvas.value.releasePointerCapture) {
+    patternCanvas.value.releasePointerCapture(e.pointerId);
+  }
+};
 
 // 暴露 ref
 defineExpose({
@@ -107,7 +157,7 @@ watch(() => props.originalImageUrl, (newUrl) => {
 }
 
 .header-icon {
-  font-size: 20px;
+  font-size: 18px;
   color: #409EFF;
 }
 
@@ -211,10 +261,12 @@ watch(() => props.originalImageUrl, (newUrl) => {
     transform: scale(1);
     opacity: 0.5;
   }
+
   50% {
     transform: scale(1.1);
     opacity: 0.8;
   }
+
   100% {
     transform: scale(1);
     opacity: 0.5;

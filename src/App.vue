@@ -3,18 +3,16 @@
     <el-container>
       <el-header height="60px" class="header">
         <div class="header-content">
-          <el-button 
-            type="primary" 
-            circle 
-            size="small" 
-            @click="toggleSidebar"
-            class="collapse-btn"
-          >
+          <el-button type="primary" circle size="small" @click="toggleSidebar" class="collapse-btn">
             <template v-if="isCollapsed">
-              <el-icon><Expand /></el-icon>
+              <el-icon>
+                <Expand />
+              </el-icon>
             </template>
             <template v-else>
-              <el-icon><Fold /></el-icon>
+              <el-icon>
+                <Fold />
+              </el-icon>
             </template>
           </el-button>
           <h1 class="title">拼豆图纸生成器</h1>
@@ -22,44 +20,46 @@
       </el-header>
       <el-container>
         <el-aside :width="isCollapsed ? '0px' : '300px'" class="aside" :class="{ 'collapsed': isCollapsed }">
-          <UploadSection @image-uploaded="handleImageUploaded" />
-          <Controls 
-            v-model:gridSize="gridSize"
-            v-model:colorCount="colorCount"
-            v-model:brand="selectedBrand"
-            v-model:showNumbers="showNumbers"
-            @generate="generatePattern"
-            @download="downloadPattern"
-          />
-          <PatternInfo 
-            :infoText="infoText"
-            :colorStats="colorStats"
-          />
+          <UploadSection :image-url="originalImageUrl" @image-uploaded="handleImageUploaded"
+            @image-selected="handleImageSelected" />
+          <Controls v-model:gridWidth="gridWidth" v-model:gridHeight="gridHeight" v-model:colorCount="colorCount"
+            v-model:brand="selectedBrand" v-model:showNumbers="showNumbers" @generate="generatePattern"
+            @download="downloadPattern" />
+          <EditPalette :palette="patternPalette" :activeColor="selectedEditColor" :editMode="editMode"
+            @update:editMode="editMode = $event" @select="selectEditColor" @fill-all="fillAllWithSelectedColor" />
+          <PatternInfo :infoText="infoText" :colorStats="colorStats" />
         </el-aside>
         <el-main class="main">
-          <PreviewSection 
-            ref="previewSection"
-            :originalImageUrl="originalImageUrl"
-          />
+          <SourceImageCard :image-url="originalImageUrl" />
+          <PreviewSection ref="previewSection" :originalImageUrl="originalImageUrl" :gridWidth="gridWidth"
+            :gridHeight="gridHeight" :cellSize="showNumbers ? 20 : 10" :axisMargin="showNumbers ? 44 : 12"
+            :editMode="editMode" @cell-edit="applyPatternEdit" />
         </el-main>
       </el-container>
     </el-container>
+
+    <CropperDialog :visible="cropperVisible" :image-data="imageData" @update:visible="cropperVisible = $event"
+      @upload="handleImageUploaded" />
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import UploadSection from './components/UploadSection.vue';
 import Controls from './components/Controls.vue';
 import PreviewSection from './components/PreviewSection.vue';
 import PatternInfo from './components/PatternInfo.vue';
+import SourceImageCard from './components/SourceImageCard.vue';
+import EditPalette from './components/EditPalette.vue';
+import CropperDialog from './components/CropperDialog.vue';
 import colorSystemMapping from '../src/colorMap/colorSystemMapping.json';
 import { Fold, Expand } from '@element-plus/icons-vue';
 
 // 响应式数据
 const originalImage = ref(null);
 const originalImageUrl = ref('');
-const gridSize = ref(30);
+const gridWidth = ref(30);
+const gridHeight = ref(30);
 const colorCount = ref(8);
 const infoText = ref('请上传图片并生成图纸');
 const perlerColors = ref([]);
@@ -67,7 +67,19 @@ const previewSection = ref(null);
 const selectedBrand = ref('MARD');
 const showNumbers = ref(false);
 const colorStats = ref([]);
+const patternGrid = ref([]);
+const editMode = ref(false);
+const selectedEditColor = ref(null);
 const isCollapsed = ref(false);
+
+const patternPalette = computed(() => colorStats.value.map(item => ({
+  code: item.code,
+  color: item.color
+})));
+
+// 裁剪相关数据
+const cropperVisible = ref(false);
+const imageData = ref(null);
 
 // 切换侧边栏
 const toggleSidebar = () => {
@@ -78,14 +90,14 @@ const toggleSidebar = () => {
 const loadColorData = () => {
   try {
     const colors = [];
-    
+
     for (const [hex, info] of Object.entries(colorSystemMapping)) {
       const r = parseInt(hex.substring(1, 3), 16);
       const g = parseInt(hex.substring(3, 5), 16);
       const b = parseInt(hex.substring(5, 7), 16);
-      colors.push({r, g, b, hex, info});
+      colors.push({ r, g, b, hex, info });
     }
-    
+
     perlerColors.value = colors;
     console.log(`已加载 ${perlerColors.value.length} 种拼豆颜色`);
   } catch (error) {
@@ -99,6 +111,13 @@ const handleImageUploaded = (data) => {
   originalImage.value = data.file;
   originalImageUrl.value = data.url;
   infoText.value = `图片已上传`;
+};
+
+// 处理图片选择（用于裁剪）
+const handleImageSelected = (data) => {
+  imageData.value = data.imageData;
+  originalImageUrl.value = data.imageUrl;
+  cropperVisible.value = true;
 };
 
 // 找到最接近的颜色
@@ -150,6 +169,173 @@ const quantizeColors = (pixels, count) => {
   return colorMap;
 };
 
+const refreshColorStats = () => {
+  const usage = {};
+  patternGrid.value.forEach((row) => {
+    row.forEach((cell) => {
+      const key = `${cell.color.r},${cell.color.g},${cell.color.b}`;
+      if (!usage[key]) {
+        usage[key] = {
+          color: cell.color,
+          count: 0,
+          code: cell.code || ''
+        };
+      }
+      usage[key].count++;
+    });
+  });
+
+  colorStats.value = Object.values(usage)
+    .filter(item => item.code)
+    .sort((a, b) => b.count - a.count);
+
+  if (!selectedEditColor.value && colorStats.value.length) {
+    selectedEditColor.value = colorStats.value[0].color;
+  }
+};
+
+const renderPatternGrid = () => {
+  const canvas = previewSection.value?.patternCanvas;
+  if (!canvas || !patternGrid.value.length) return;
+
+  const ctx = canvas.getContext('2d');
+  const cellSize = showNumbers.value ? 20 : 10;
+  const axisMargin = showNumbers.value ? 44 : 12;
+  const labelInterval = cellSize >= 20 ? 1 : 5;
+
+  canvas.width = gridWidth.value * cellSize + axisMargin * 2;
+  canvas.height = gridHeight.value * cellSize + axisMargin * 2;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (let y = 0; y < gridHeight.value; y++) {
+    for (let x = 0; x < gridWidth.value; x++) {
+      const cell = patternGrid.value[y]?.[x];
+      if (!cell) continue;
+      const cellX = axisMargin + x * cellSize;
+      const cellY = axisMargin + y * cellSize;
+
+      ctx.fillStyle = `rgb(${cell.color.r}, ${cell.color.g}, ${cell.color.b})`;
+      ctx.fillRect(cellX, cellY, cellSize, cellSize);
+      ctx.strokeStyle = '#ddd';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(cellX, cellY, cellSize, cellSize);
+
+      if (showNumbers.value && cell.code) {
+        const colorCode = cell.code;
+        let fontSize = cellSize * 0.55;
+        ctx.font = `${fontSize}px Arial`;
+        const textWidth = ctx.measureText(colorCode).width;
+        if (textWidth > cellSize * 0.75) {
+          fontSize = (cellSize * 0.75 / textWidth) * fontSize;
+          ctx.font = `${fontSize}px Arial`;
+        }
+        const textX = cellX + cellSize / 2;
+        const textY = cellY + cellSize / 2;
+        const padding = 4;
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.fillRect(
+          textX - textWidth / 2 - padding,
+          textY - fontSize / 2 - padding / 2,
+          textWidth + padding * 2,
+          fontSize + padding
+        );
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
+        ctx.lineWidth = 2;
+        ctx.strokeText(colorCode, textX, textY);
+        ctx.fillStyle = getContrastColor(cell.color.r, cell.color.g, cell.color.b);
+        ctx.fillText(colorCode, textX, textY);
+      }
+    }
+  }
+
+  if (showNumbers.value) {
+    ctx.save();
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, axisMargin);
+    ctx.fillRect(0, 0, axisMargin, canvas.height);
+    ctx.fillRect(0, canvas.height - axisMargin, canvas.width, axisMargin);
+    ctx.fillRect(canvas.width - axisMargin, 0, axisMargin, canvas.height);
+
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(axisMargin, axisMargin);
+    ctx.lineTo(axisMargin, canvas.height - axisMargin);
+    ctx.moveTo(axisMargin, axisMargin);
+    ctx.lineTo(canvas.width - axisMargin, axisMargin);
+    ctx.stroke();
+
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 12px Arial';
+    ctx.textBaseline = 'middle';
+
+    for (let i = 0; i < gridWidth.value; i++) {
+      if (i === 0 || i === gridWidth.value - 1 || (i + 1) % labelInterval === 0) {
+        const label = `${i + 1}`;
+        const x = axisMargin + i * cellSize + cellSize / 2;
+        const topY = axisMargin / 2;
+        const bottomY = canvas.height - axisMargin / 2;
+
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x, topY);
+        ctx.fillText(label, x, bottomY);
+      }
+    }
+
+    for (let i = 0; i < gridHeight.value; i++) {
+      if (i === 0 || i === gridHeight.value - 1 || (i + 1) % labelInterval === 0) {
+        const label = `${i + 1}`;
+        const y = axisMargin + i * cellSize + cellSize / 2;
+        const leftX = axisMargin / 2;
+        const rightX = canvas.width - axisMargin / 2;
+
+        ctx.textAlign = 'right';
+        ctx.fillText(label, leftX, y);
+        ctx.textAlign = 'left';
+        ctx.fillText(label, rightX, y);
+      }
+    }
+    ctx.restore();
+  }
+
+  drawStatsToCanvas(ctx, canvas, cellSize);
+};
+
+const updateCellColor = (gridX, gridY, color) => {
+  const cell = patternGrid.value[gridY]?.[gridX];
+  if (!cell || !color) return;
+  cell.color = color;
+  cell.code = color.info?.[selectedBrand.value] || cell.code || '';
+  renderPatternGrid();
+  refreshColorStats();
+};
+
+const applyPatternEdit = ({ gridX, gridY }) => {
+  if (!editMode.value || !selectedEditColor.value) return;
+  updateCellColor(gridX, gridY, selectedEditColor.value);
+};
+
+const fillAllWithSelectedColor = () => {
+  if (!selectedEditColor.value) return;
+  patternGrid.value.forEach((row) => {
+    row.forEach((cell) => {
+      cell.color = selectedEditColor.value;
+      cell.code = selectedEditColor.value.info?.[selectedBrand.value] || cell.code || '';
+    });
+  });
+  renderPatternGrid();
+  refreshColorStats();
+};
+
+const selectEditColor = (color) => {
+  selectedEditColor.value = color;
+};
+
 // 生成拼豆图纸
 const generatePattern = () => {
   if (!originalImage.value) {
@@ -166,99 +352,64 @@ const generatePattern = () => {
   const ctx = canvas.getContext('2d');
 
   // 设置画布大小
-  canvas.width = gridSize.value * 10;
-  canvas.height = gridSize.value * 10;
+  canvas.width = Math.max(1, gridWidth.value * 10);
+  canvas.height = Math.max(1, gridHeight.value * 10);
 
   // 绘制原始图片到临时画布进行处理
   const tempCanvas = document.createElement('canvas');
   const tempCtx = tempCanvas.getContext('2d');
-  tempCanvas.width = gridSize.value;
-  tempCanvas.height = gridSize.value;
+  tempCanvas.width = Math.max(1, gridWidth.value);
+  tempCanvas.height = Math.max(1, gridHeight.value);
 
   const img = new Image();
   img.onload = () => {
-    tempCtx.drawImage(img, 0, 0, gridSize.value, gridSize.value);
+    tempCtx.drawImage(img, 0, 0, gridWidth.value, gridHeight.value);
 
     // 获取像素数据
-    const imageData = tempCtx.getImageData(0, 0, gridSize.value, gridSize.value);
+    const imageData = tempCtx.getImageData(0, 0, gridWidth.value, gridHeight.value);
     const pixels = imageData.data;
 
     // 颜色量化
     const colorMap = quantizeColors(pixels, colorCount.value);
 
-    // 设置格子大小
     const cellSize = showNumbers.value ? 20 : 10;
-    
-    // 重新设置画布大小
-    canvas.width = gridSize.value * cellSize;
-    canvas.height = gridSize.value * cellSize;
-    
-    // 颜色使用统计
+    const axisMargin = showNumbers.value ? 44 : 12;
+    const labelInterval = cellSize >= 20 ? 1 : 5;
     const colorUsage = {};
-    
-    // 绘制拼豆图案
-    for (let y = 0; y < gridSize.value; y++) {
-      for (let x = 0; x < gridSize.value; x++) {
-        const index = (y * gridSize.value + x) * 4;
+    patternGrid.value = [];
+
+    for (let y = 0; y < gridHeight.value; y++) {
+      const row = [];
+      for (let x = 0; x < gridWidth.value; x++) {
+        const index = (y * gridWidth.value + x) * 4;
         const r = pixels[index];
         const g = pixels[index + 1];
         const b = pixels[index + 2];
-        
-        // 找到最接近的颜色
-        const closestColor = findClosestColor({r, g, b}, colorMap);
-        
-        // 绘制豆子
-        ctx.fillStyle = `rgb(${closestColor.r}, ${closestColor.g}, ${closestColor.b})`;
-        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-        
-        // 绘制网格线
-        ctx.strokeStyle = '#ddd'; 
-        ctx.lineWidth = 0.5;
-        ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
-        
-        // 显示颜色编号
-        if (showNumbers.value && closestColor.info && closestColor.info[selectedBrand.value]) {
-          const colorCode = closestColor.info[selectedBrand.value];
-          ctx.fillStyle = getContrastColor(closestColor.r, closestColor.g, closestColor.b);
-          // 动态调整字体大小，确保编号不超过格子
-          let fontSize = cellSize * 0.6;
-          ctx.font = `${fontSize}px Arial`;
-          const textWidth = ctx.measureText(colorCode).width;
-          if (textWidth > cellSize * 0.8) {
-            fontSize = (cellSize * 0.8 / textWidth) * fontSize;
-            ctx.font = `${fontSize}px Arial`;
-          }
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(colorCode, x * cellSize + cellSize / 2, y * cellSize + cellSize / 2);
-        }
-        
-        // 统计颜色使用次数
+        const closestColor = findClosestColor({ r, g, b }, colorMap);
+        const colorCode = closestColor.info ? closestColor.info[selectedBrand.value] || '' : '';
+
+        row.push({
+          color: closestColor,
+          code: colorCode
+        });
+
         const colorKey = `${closestColor.r},${closestColor.g},${closestColor.b}`;
         if (!colorUsage[colorKey]) {
           colorUsage[colorKey] = {
             color: closestColor,
-            count: 0
+            count: 0,
+            code: colorCode
           };
         }
         colorUsage[colorKey].count++;
       }
+      patternGrid.value.push(row);
     }
-    
-    // 生成颜色统计数据
-    colorStats.value = Object.values(colorUsage)
-      .map(item => ({
-        code: item.color.info ? item.color.info[selectedBrand.value] || '' : '',
-        color: item.color,
-        count: item.count
-      }))
-      .filter(item => item.code)
-      .sort((a, b) => b.count - a.count);
-    
-    // 绘制统计信息到画布
-    drawStatsToCanvas(ctx, canvas, cellSize);
-    
-    infoText.value = `拼豆图纸已生成: ${gridSize.value}x${gridSize.value} 网格, ${colorCount.value} 种颜色`;
+
+    refreshColorStats();
+    selectedEditColor.value = selectedEditColor.value || patternPalette.value[0]?.color || selectedEditColor.value;
+    renderPatternGrid();
+    infoText.value = `拼豆图纸已生成: ${gridWidth.value}x${gridHeight.value} 网格, ${colorCount.value} 种颜色`;
   };
   img.src = originalImageUrl.value;
 };
@@ -270,7 +421,7 @@ const downloadPattern = () => {
     alert('请先生成拼豆图纸');
     return;
   }
-  
+
   const link = document.createElement('a');
   link.download = 'perler-pattern.png';
   link.href = canvas.toDataURL('image/png');
@@ -281,44 +432,66 @@ const downloadPattern = () => {
 // 绘制统计信息到画布
 const drawStatsToCanvas = (ctx, canvas, cellSize) => {
   if (colorStats.value.length === 0) return;
-  
+
   // 计算统计信息区域的高度
-  const statsHeight = Math.ceil(colorStats.value.length / 5) * 40 + 60;
+  const columns = 3;
+  const rowHeight = 48;
+  const statsHeight = Math.ceil(colorStats.value.length / columns) * rowHeight + 80;
   const originalHeight = canvas.height;
-  
+
   // 调整画布大小
   const tempCanvas = document.createElement('canvas');
   const tempCtx = tempCanvas.getContext('2d');
   tempCanvas.width = canvas.width;
   tempCanvas.height = originalHeight + statsHeight;
-  
+
   // 复制原始画布内容
   tempCtx.drawImage(canvas, 0, 0);
-  
-  // 绘制统计信息标题
+
+  // 背景区域
+  tempCtx.fillStyle = '#f9fafb';
+  tempCtx.fillRect(0, originalHeight, canvas.width, statsHeight);
+  tempCtx.fillStyle = '#fff';
+  tempCtx.fillRect(12, originalHeight + 12, canvas.width - 24, statsHeight - 24);
+  tempCtx.strokeStyle = '#e6e9ed';
+  tempCtx.lineWidth = 1;
+  tempCtx.strokeRect(12, originalHeight + 12, canvas.width - 24, statsHeight - 24);
+
+  // 标题
   tempCtx.fillStyle = '#333';
-  tempCtx.font = '16px Arial';
-  tempCtx.textAlign = 'center';
-  tempCtx.fillText('拼豆数量统计', canvas.width / 2, originalHeight + 30);
-  
-  // 绘制统计信息网格
+  tempCtx.font = 'bold 16px Arial';
+  tempCtx.textAlign = 'left';
+  tempCtx.fillText('拼豆数量统计', 24, originalHeight + 38);
+
+  const columnWidth = (canvas.width - 48) / columns;
   colorStats.value.forEach((stat, index) => {
-    const row = Math.floor(index / 5);
-    const col = index % 5;
-    const x = col * (canvas.width / 5) + 20;
-    const y = originalHeight + 60 + row * 40;
-    
-    // 绘制颜色块
+    const row = Math.floor(index / columns);
+    const col = index % columns;
+    const x = 24 + col * columnWidth;
+    const y = originalHeight + 60 + row * rowHeight;
+
+    // 卡片背景
+    tempCtx.fillStyle = '#ffffff';
+    tempCtx.fillRect(x, y, columnWidth - 16, rowHeight - 12);
+    tempCtx.strokeStyle = '#e8edf3';
+    tempCtx.lineWidth = 1;
+    tempCtx.strokeRect(x, y, columnWidth - 16, rowHeight - 12);
+
+    // 颜色块
     tempCtx.fillStyle = `rgb(${stat.color.r}, ${stat.color.g}, ${stat.color.b})`;
-    tempCtx.fillRect(x, y, 20, 20);
-    
-    // 绘制编号和数量
+    tempCtx.fillRect(x + 10, y + 10, 24, 24);
+
+    // 文字
     tempCtx.fillStyle = '#333';
-    tempCtx.font = '12px Arial';
+    tempCtx.font = '14px Arial';
     tempCtx.textAlign = 'left';
-    tempCtx.fillText(`${stat.code}: ${stat.count}颗`, x + 30, y + 15);
+    tempCtx.fillText(stat.code, x + 40, y + 19);
+
+    tempCtx.fillStyle = '#666';
+    tempCtx.font = '12px Arial';
+    tempCtx.fillText(`${stat.count} 颗`, x + 40, y + 37);
   });
-  
+
   // 更新原始画布
   canvas.width = tempCanvas.width;
   canvas.height = tempCanvas.height;
@@ -343,7 +516,8 @@ loadColorData();
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   width: 100%;
   margin: 0;
@@ -420,19 +594,53 @@ html, body {
   box-sizing: border-box;
 }
 
-.aside:hover {
-  box-shadow: 2px 0 16px 0 rgba(0, 0, 0, 0.08);
+.edit-panel {
+  width: 100%;
 }
 
-.aside.collapsed {
-  width: 0 !important;
-  padding: 0;
-  border-right: none;
-  overflow: hidden;
+.edit-title {
+  margin-bottom: 12px;
 }
 
-.aside.collapsed * {
-  display: none;
+.edit-card {
+  width: 100%;
+  border-radius: 12px;
+}
+
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e9edf3;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.palette-item.active {
+  border-color: #409eff;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.12);
+}
+
+.palette-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 16px;
 }
 
 .main {
@@ -440,7 +648,7 @@ html, body {
   padding: 20px;
   overflow: auto;
   background-image: linear-gradient(45deg, #f5f7fa 25%, transparent 25%, transparent 75%, #f5f7fa 75%, #f5f7fa),
-                    linear-gradient(45deg, #f5f7fa 25%, transparent 25%, transparent 75%, #f5f7fa 75%, #f5f7fa);
+    linear-gradient(45deg, #f5f7fa 25%, transparent 25%, transparent 75%, #f5f7fa 75%, #f5f7fa);
   background-size: 20px 20px;
   background-position: 0 0, 10px 10px;
   height: 100%;
