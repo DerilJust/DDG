@@ -5,12 +5,12 @@
         <div class="header-content">
           <el-button type="primary" circle size="small" @click="toggleSidebar" class="collapse-btn">
             <template v-if="isCollapsed">
-              <el-icon>
+              <el-icon :size="24">
                 <Expand />
               </el-icon>
             </template>
             <template v-else>
-              <el-icon>
+              <el-icon :size="24">
                 <Fold />
               </el-icon>
             </template>
