@@ -71,6 +71,31 @@
               <span :class="['switch-label', showNumbers ? 'active-text' : '']">显示</span>
             </div>
           </el-form-item>
+
+          <!-- 图片比例 -->
+          <el-form-item label="图片比例">
+            <div class="slider-row">
+              <span>{{ imageRatio }}</span>
+            </div>
+          </el-form-item>
+
+          <!-- 锁定比例 -->
+          <el-form-item label="锁定比例">
+            <div class="switch-wrapper">
+              <span :class="['switch-label', !lockAspectRatio ? 'active-text' : '']">关闭</span>
+              <el-switch v-model="lockAspectRatio" />
+              <span :class="['switch-label', lockAspectRatio ? 'active-text' : '']">开启</span>
+            </div>
+          </el-form-item>
+
+          <!-- 编辑模式 -->
+          <el-form-item label="编辑模式">
+            <div class="switch-wrapper">
+              <span :class="['switch-label', !editMode ? 'active-text' : '']">关闭</span>
+              <el-switch v-model="editMode" />
+              <span :class="['switch-label', editMode ? 'active-text' : '']">开启</span>
+            </div>
+          </el-form-item>
         </el-form>
       </div>
 
@@ -98,12 +123,15 @@ import { MagicStick, Download, Setting } from '@element-plus/icons-vue';
 const props = defineProps({
   gridWidth: { type: Number, default: 30 },
   gridHeight: { type: Number, default: 30 },
-  colorCount: { type: Number, default: 8 },
+  colorCount: { type: Number, default: 20 },
   brand: { type: String, default: 'MARD' },
-  showNumbers: { type: Boolean, default: false }
+  showNumbers: { type: Boolean, default: false },
+  editMode: { type: Boolean, default: false },
+  imageRatio: { type: String, default: '暂无图片' },
+  lockAspectRatio: { type: Boolean, default: false }
 });
 
-const emit = defineEmits(['update:gridWidth', 'update:gridHeight', 'update:colorCount', 'update:brand', 'update:showNumbers', 'generate', 'download']);
+const emit = defineEmits(['update:gridWidth', 'update:gridHeight', 'update:colorCount', 'update:brand', 'update:showNumbers', 'update:editMode', 'update:lockAspectRatio', 'generate', 'download']);
 
 // 响应式绑定
 const gridWidth = computed({
@@ -126,9 +154,19 @@ const showNumbers = computed({
   get: () => props.showNumbers,
   set: (val) => emit('update:showNumbers', val)
 });
+const editMode = computed({
+  get: () => props.editMode,
+  set: (val) => emit('update:editMode', val)
+});
+const imageRatio = computed(() => props.imageRatio);
+const lockAspectRatio = computed({
+  get: () => props.lockAspectRatio,
+  set: (val) => emit('update:lockAspectRatio', val)
+});
 
 const generatePattern = () => emit('generate');
 const downloadPattern = () => emit('download');
+
 </script>
 
 <style scoped>

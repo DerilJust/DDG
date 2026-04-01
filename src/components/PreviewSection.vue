@@ -12,13 +12,15 @@
       <div class="canvas-container">
         <canvas ref="patternCanvas" id="pattern-canvas" class="pattern-canvas" @pointerdown="handlePointerDown"
           @pointermove="handlePointerMove" @pointerup="handlePointerUp" @pointerleave="handlePointerUp"></canvas>
+        <div v-if="selectedCell" class="selection-overlay" :style="selectedCellStyle"></div>
+        <div v-if="selectionRect" class="selection-overlay area" :style="selectionRectStyle"></div>
       </div>
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Grid } from '@element-plus/icons-vue';
 
 // 定义 props
@@ -46,14 +48,44 @@ const props = defineProps({
   editMode: {
     type: Boolean,
     default: false
+  },
+  editType: {
+    type: String,
+    default: 'click'
   }
 });
-const emit = defineEmits(['cell-edit']);
+const emit = defineEmits(['cell-selected', 'area-selected']);
 
 // 响应式数据
 const patternCanvas = ref(null);
 const pointerDown = ref(false);
-const lastEdited = ref({ x: -1, y: -1 });
+const selectionStart = ref(null);
+const selectionRect = ref(null);
+const selectedCell = ref(null);
+
+const selectedCellStyle = computed(() => {
+  if (!selectedCell.value) return {};
+  return {
+    left: `${props.axisMargin + selectedCell.value.x * props.cellSize}px`,
+    top: `${props.axisMargin + selectedCell.value.y * props.cellSize}px`,
+    width: `${props.cellSize}px`,
+    height: `${props.cellSize}px`
+  };
+});
+
+const selectionRectStyle = computed(() => {
+  if (!selectionRect.value) return {};
+  const x1 = Math.min(selectionRect.value.x1, selectionRect.value.x2);
+  const y1 = Math.min(selectionRect.value.y1, selectionRect.value.y2);
+  const x2 = Math.max(selectionRect.value.x1, selectionRect.value.x2);
+  const y2 = Math.max(selectionRect.value.y1, selectionRect.value.y2);
+  return {
+    left: `${props.axisMargin + x1 * props.cellSize}px`,
+    top: `${props.axisMargin + y1 * props.cellSize}px`,
+    width: `${(x2 - x1 + 1) * props.cellSize}px`,
+    height: `${(y2 - y1 + 1) * props.cellSize}px`
+  };
+});
 
 const getCanvasPointerPos = (e) => {
   if (!patternCanvas.value) return { x: 0, y: 0 };
@@ -74,36 +106,77 @@ const getGridCell = (e) => {
   return { x, y, inGrid };
 };
 
-const handleCellEdit = (e) => {
-  if (!props.editMode) return;
-  const { x, y, inGrid } = getGridCell(e);
-  if (!inGrid) return;
-  if (lastEdited.value.x === x && lastEdited.value.y === y) return;
-  lastEdited.value = { x, y };
-  emit('cell-edit', { gridX: x, gridY: y });
+const normalizeSelection = (rect) => {
+  const x1 = Math.max(0, Math.min(props.gridWidth - 1, rect.x1));
+  const y1 = Math.max(0, Math.min(props.gridHeight - 1, rect.y1));
+  const x2 = Math.max(0, Math.min(props.gridWidth - 1, rect.x2));
+  const y2 = Math.max(0, Math.min(props.gridHeight - 1, rect.y2));
+  return {
+    type: 'area',
+    x1,
+    y1,
+    x2,
+    y2
+  };
 };
+
+const resetSelection = () => {
+  pointerDown.value = false;
+  selectionStart.value = null;
+  selectionRect.value = null;
+  selectedCell.value = null;
+};
+
+watch(() => props.editMode, (value) => {
+  if (!value) {
+    resetSelection();
+  }
+});
+
+watch(() => props.editType, () => {
+  resetSelection();
+});
 
 const handlePointerDown = (e) => {
   if (!props.editMode || !patternCanvas.value) return;
   e.preventDefault();
+  const { x, y, inGrid } = getGridCell(e);
+  if (!inGrid) return;
+
+  if (props.editType === 'click') {
+    selectedCell.value = { x, y };
+    emit('cell-selected', { type: 'cell', x, y });
+    return;
+  }
+
   pointerDown.value = true;
+  selectionStart.value = { x, y };
+  selectionRect.value = { x1: x, y1: y, x2: x, y2: y };
   if (patternCanvas.value.setPointerCapture) {
     patternCanvas.value.setPointerCapture(e.pointerId);
   }
-  handleCellEdit(e);
 };
 
 const handlePointerMove = (e) => {
-  if (!props.editMode || !pointerDown.value) return;
+  if (!props.editMode || props.editType !== 'area' || !pointerDown.value || !selectionStart.value) return;
   e.preventDefault();
-  handleCellEdit(e);
+  const { x, y, inGrid } = getGridCell(e);
+  if (!inGrid) return;
+  selectionRect.value = {
+    x1: selectionStart.value.x,
+    y1: selectionStart.value.y,
+    x2: x,
+    y2: y
+  };
 };
 
 const handlePointerUp = (e) => {
   if (!props.editMode) return;
+  if (props.editType === 'area' && selectionRect.value) {
+    emit('area-selected', normalizeSelection(selectionRect.value));
+  }
   pointerDown.value = false;
-  lastEdited.value = { x: -1, y: -1 };
-  if (patternCanvas.value && patternCanvas.value.releasePointerCapture) {
+  if (patternCanvas.value && e?.pointerId != null && patternCanvas.value.releasePointerCapture) {
     patternCanvas.value.releasePointerCapture(e.pointerId);
   }
 };
@@ -228,6 +301,18 @@ watch(() => props.originalImageUrl, (newUrl) => {
 
 .pattern-canvas:hover {
   box-shadow: 0 6px 24px 0 rgba(0, 0, 0, 0.2);
+}
+
+.selection-overlay {
+  position: absolute;
+  border: 2px dashed rgba(64, 158, 255, 0.95);
+  background-color: rgba(64, 158, 255, 0.18);
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.selection-overlay.area {
+  background-color: rgba(64, 158, 255, 0.12);
 }
 
 .image-error,

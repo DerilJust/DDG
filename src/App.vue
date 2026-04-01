@@ -23,18 +23,23 @@
           <UploadSection :image-url="originalImageUrl" @image-uploaded="handleImageUploaded"
             @image-selected="handleImageSelected" />
           <Controls v-model:gridWidth="gridWidth" v-model:gridHeight="gridHeight" v-model:colorCount="colorCount"
-            v-model:brand="selectedBrand" v-model:showNumbers="showNumbers" @generate="generatePattern"
-            @download="downloadPattern" />
-          <EditPalette :palette="patternPalette" :activeColor="selectedEditColor" :editMode="editMode"
-            @update:editMode="editMode = $event" @select="selectEditColor" @fill-all="fillAllWithSelectedColor" />
+            v-model:brand="selectedBrand" v-model:showNumbers="showNumbers" v-model:editMode="editMode"
+            v-model:lockAspectRatio="lockAspectRatio" :imageRatio="imageRatioText"
+            @generate="generatePattern" @download="downloadPattern" />
           <PatternInfo :infoText="infoText" :colorStats="colorStats" />
         </el-aside>
         <el-main class="main">
           <SourceImageCard :image-url="originalImageUrl" />
           <PreviewSection ref="previewSection" :originalImageUrl="originalImageUrl" :gridWidth="gridWidth"
             :gridHeight="gridHeight" :cellSize="showNumbers ? 20 : 10" :axisMargin="showNumbers ? 44 : 12"
-            :editMode="editMode" @cell-edit="applyPatternEdit" />
+            :editMode="editMode" :editType="editType" @cell-selected="setPendingSelection" @area-selected="setPendingSelection" />
         </el-main>
+        <el-aside width="320px" class="edit-aside" v-show="editMode">
+          <EditPalette :palette="patternPalette" :activeColor="selectedEditColor" :editMode="editMode"
+            :editType="editType" :hasSelection="!!pendingSelection" :hasPendingColor="!!selectedEditColor"
+            @update:editMode="editMode = $event" @update:editType="editType = $event" @select="selectEditColor"
+            @fill-all="fillAllWithSelectedColor" @confirm-edit="confirmPendingEdit" @cancel-edit="cancelPendingEdit" />
+        </el-aside>
       </el-container>
     </el-container>
 
@@ -44,7 +49,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import UploadSection from './components/UploadSection.vue';
 import Controls from './components/Controls.vue';
 import PreviewSection from './components/PreviewSection.vue';
@@ -60,7 +65,7 @@ const originalImage = ref(null);
 const originalImageUrl = ref('');
 const gridWidth = ref(30);
 const gridHeight = ref(30);
-const colorCount = ref(8);
+const colorCount = ref(20);
 const infoText = ref('请上传图片并生成图纸');
 const perlerColors = ref([]);
 const previewSection = ref(null);
@@ -69,13 +74,76 @@ const showNumbers = ref(false);
 const colorStats = ref([]);
 const patternGrid = ref([]);
 const editMode = ref(false);
+const editType = ref('click');
 const selectedEditColor = ref(null);
+const pendingSelection = ref(null);
+const lockAspectRatio = ref(false);
+const originalImageSize = ref({ width: 0, height: 0 });
 const isCollapsed = ref(false);
 
-const patternPalette = computed(() => colorStats.value.map(item => ({
-  code: item.code,
-  color: item.color
-})));
+const patternPalette = computed(() => {
+  const usageMap = {};
+  patternGrid.value.forEach((row) => {
+    row.forEach((cell) => {
+      if (cell?.color) {
+        const key = `${cell.color.r},${cell.color.g},${cell.color.b}`;
+        usageMap[key] = (usageMap[key] || 0) + 1;
+      }
+    });
+  });
+
+  return perlerColors.value
+    .filter(color => color.info && color.info[selectedBrand.value])
+    .map(color => ({
+      code: color.info[selectedBrand.value],
+      color,
+      count: usageMap[`${color.r},${color.g},${color.b}`] || 0
+    }))
+    .sort((a, b) => {
+      const countDiff = b.count - a.count;
+      if (countDiff !== 0) return countDiff;
+      return a.code.localeCompare(b.code);
+    });
+});
+
+const gcd = (a, b) => {
+  return b === 0 ? a : gcd(b, a % b);
+};
+
+const imageRatioText = computed(() => {
+  const { width, height } = originalImageSize.value;
+  if (!width || !height) return '暂无图片';
+  const ratio = gcd(width, height);
+  return `${width / ratio}:${height / ratio}`;
+});
+
+const currentImageRatio = computed(() => {
+  const { width, height } = originalImageSize.value;
+  return width && height ? width / height : gridWidth.value / gridHeight.value;
+});
+
+const ratioLocking = ref(false);
+watch(gridWidth, (newWidth, oldWidth) => {
+  if (!lockAspectRatio.value || ratioLocking.value) return;
+  ratioLocking.value = true;
+  gridHeight.value = Math.max(1, Math.round(newWidth / currentImageRatio.value));
+  ratioLocking.value = false;
+});
+watch(gridHeight, (newHeight, oldHeight) => {
+  if (!lockAspectRatio.value || ratioLocking.value) return;
+  ratioLocking.value = true;
+  gridWidth.value = Math.max(1, Math.round(newHeight * currentImageRatio.value));
+  ratioLocking.value = false;
+});
+
+watch([selectedBrand, patternPalette], () => {
+  const currentHex = selectedEditColor.value?.hex;
+  const availableHexes = patternPalette.value.map(item => item.color.hex);
+
+  if (!currentHex || !availableHexes.includes(currentHex)) {
+    selectedEditColor.value = patternPalette.value[0]?.color || null;
+  }
+});
 
 // 裁剪相关数据
 const cropperVisible = ref(false);
@@ -107,10 +175,34 @@ const loadColorData = () => {
 };
 
 // 处理图片上传
+const setGridSizeByImageRatio = (width, height) => {
+  if (!width || !height) return;
+  const maxSize = 100;
+  const aspect = width / height;
+  if (width <= maxSize && height <= maxSize) {
+    gridWidth.value = Math.max(1, Math.round(width));
+    gridHeight.value = Math.max(1, Math.round(height));
+    return;
+  }
+
+  if (aspect >= 1) {
+    gridWidth.value = maxSize;
+    gridHeight.value = Math.max(1, Math.round(maxSize / aspect));
+  } else {
+    gridHeight.value = maxSize;
+    gridWidth.value = Math.max(1, Math.round(maxSize * aspect));
+  }
+};
+
 const handleImageUploaded = (data) => {
   originalImage.value = data.file;
   originalImageUrl.value = data.url;
   infoText.value = `图片已上传`;
+
+  if (data.width && data.height) {
+    originalImageSize.value = { width: data.width, height: data.height };
+    setGridSizeByImageRatio(data.width, data.height);
+  }
 };
 
 // 处理图片选择（用于裁剪）
@@ -303,6 +395,7 @@ const renderPatternGrid = () => {
     ctx.restore();
   }
 
+  drawPendingPreview(ctx, axisMargin, cellSize);
   drawStatsToCanvas(ctx, canvas, cellSize);
 };
 
@@ -311,13 +404,89 @@ const updateCellColor = (gridX, gridY, color) => {
   if (!cell || !color) return;
   cell.color = color;
   cell.code = color.info?.[selectedBrand.value] || cell.code || '';
+};
+
+const getPendingCells = () => {
+  if (!pendingSelection.value || !selectedEditColor.value) return [];
+
+  if (pendingSelection.value.type === 'cell') {
+    const x = Math.max(0, Math.min(gridWidth.value - 1, pendingSelection.value.x));
+    const y = Math.max(0, Math.min(gridHeight.value - 1, pendingSelection.value.y));
+    return [{ x, y }];
+  }
+
+  const x1 = Math.max(0, Math.min(gridWidth.value - 1, Math.min(pendingSelection.value.x1, pendingSelection.value.x2)));
+  const y1 = Math.max(0, Math.min(gridHeight.value - 1, Math.min(pendingSelection.value.y1, pendingSelection.value.y2)));
+  const x2 = Math.max(0, Math.min(gridWidth.value - 1, Math.max(pendingSelection.value.x1, pendingSelection.value.x2)));
+  const y2 = Math.max(0, Math.min(gridHeight.value - 1, Math.max(pendingSelection.value.y1, pendingSelection.value.y2)));
+  const cells = [];
+
+  for (let y = y1; y <= y2; y++) {
+    for (let x = x1; x <= x2; x++) {
+      cells.push({ x, y });
+    }
+  }
+  return cells;
+};
+
+const drawPendingPreview = (ctx, axisMargin, cellSize) => {
+  if (!pendingSelection.value || !selectedEditColor.value) return;
+
+  const previewCells = getPendingCells();
+  if (!previewCells.length) return;
+
+  ctx.save();
+  ctx.fillStyle = `rgba(${selectedEditColor.value.r}, ${selectedEditColor.value.g}, ${selectedEditColor.value.b}, 0.45)`;
+  previewCells.forEach(({ x, y }) => {
+    ctx.fillRect(axisMargin + x * cellSize, axisMargin + y * cellSize, cellSize, cellSize);
+  });
+
+  ctx.strokeStyle = '#409EFF';
+  ctx.lineWidth = 2;
+  if (pendingSelection.value.type === 'area') {
+    const x1 = Math.min(pendingSelection.value.x1, pendingSelection.value.x2);
+    const y1 = Math.min(pendingSelection.value.y1, pendingSelection.value.y2);
+    const x2 = Math.max(pendingSelection.value.x1, pendingSelection.value.x2);
+    const y2 = Math.max(pendingSelection.value.y1, pendingSelection.value.y2);
+    ctx.strokeRect(
+      axisMargin + x1 * cellSize,
+      axisMargin + y1 * cellSize,
+      (x2 - x1 + 1) * cellSize,
+      (y2 - y1 + 1) * cellSize
+    );
+  } else {
+    ctx.strokeRect(
+      axisMargin + pendingSelection.value.x * cellSize,
+      axisMargin + pendingSelection.value.y * cellSize,
+      cellSize,
+      cellSize
+    );
+  }
+  ctx.restore();
+};
+
+const setPendingSelection = (selection) => {
+  if (!editMode.value) return;
+  pendingSelection.value = selection;
+  renderPatternGrid();
+};
+
+const confirmPendingEdit = () => {
+  if (!pendingSelection.value || !selectedEditColor.value) return;
+
+  const pendingCells = getPendingCells();
+  pendingCells.forEach(({ x, y }) => {
+    updateCellColor(x, y, selectedEditColor.value);
+  });
+
+  pendingSelection.value = null;
   renderPatternGrid();
   refreshColorStats();
 };
 
-const applyPatternEdit = ({ gridX, gridY }) => {
-  if (!editMode.value || !selectedEditColor.value) return;
-  updateCellColor(gridX, gridY, selectedEditColor.value);
+const cancelPendingEdit = () => {
+  pendingSelection.value = null;
+  renderPatternGrid();
 };
 
 const fillAllWithSelectedColor = () => {
@@ -328,12 +497,16 @@ const fillAllWithSelectedColor = () => {
       cell.code = selectedEditColor.value.info?.[selectedBrand.value] || cell.code || '';
     });
   });
+  pendingSelection.value = null;
   renderPatternGrid();
   refreshColorStats();
 };
 
 const selectEditColor = (color) => {
   selectedEditColor.value = color;
+  if (pendingSelection.value) {
+    renderPatternGrid();
+  }
 };
 
 // 生成拼豆图纸
@@ -481,15 +654,11 @@ const drawStatsToCanvas = (ctx, canvas, cellSize) => {
     tempCtx.fillStyle = `rgb(${stat.color.r}, ${stat.color.g}, ${stat.color.b})`;
     tempCtx.fillRect(x + 10, y + 10, 24, 24);
 
-    // 文字
+    // 文字：编号与数量同一行显示
     tempCtx.fillStyle = '#333';
     tempCtx.font = '14px Arial';
     tempCtx.textAlign = 'left';
-    tempCtx.fillText(stat.code, x + 40, y + 19);
-
-    tempCtx.fillStyle = '#666';
-    tempCtx.font = '12px Arial';
-    tempCtx.fillText(`${stat.count} 颗`, x + 40, y + 37);
+    tempCtx.fillText(`${stat.code}  ${stat.count} 颗`, x + 40, y + 28);
   });
 
   // 更新原始画布
@@ -586,6 +755,20 @@ body {
   padding: 20px;
   overflow-y: auto;
   box-shadow: 2px 0 12px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.edit-aside {
+  background-color: white;
+  border-left: 1px solid #e4e7ed;
+  padding: 20px;
+  overflow-y: auto;
+  box-shadow: -2px 0 12px 0 rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;

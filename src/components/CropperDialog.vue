@@ -382,7 +382,12 @@ const uploadCroppedImage = async () => {
 
     try {
         const cropped = await cropCanvasImage(localImageData.value, cropRect.value);
-        emit('upload', { file: cropped.file, url: cropped.dataUrl });
+        emit('upload', {
+            file: cropped.file,
+            url: cropped.dataUrl,
+            width: cropped.image.width,
+            height: cropped.image.height
+        });
         dialogVisible.value = false;
     } catch (error) {
         console.error('上传裁剪图片失败：', error);
