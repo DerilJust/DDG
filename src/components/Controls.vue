@@ -18,9 +18,8 @@
               <el-input-number
                 v-model="gridWidth"
                 :min="1"
-                :max="100"
+                :max="1000"
                 :step="1"
-                controls-position="right"
                 :controls="true"
                 size="small"
                 class="custom-input-number"
@@ -35,9 +34,8 @@
               <el-input-number
                 v-model="gridHeight"
                 :min="1"
-                :max="100"
+                :max="1000"
                 :step="1"
-                controls-position="right"
                 :controls="true"
                 size="small"
                 class="custom-input-number"
@@ -60,6 +58,8 @@
               <el-option label="MARD" value="MARD" />
               <el-option label="COCO" value="COCO" />
               <el-option label="漫漫" value="漫漫" />
+              <el-option label="盼盼" value="盼盼" />
+              <el-option label="咪小窝" value="咪小窝" />
             </el-select>
           </el-form-item>
 
@@ -225,10 +225,6 @@ const downloadPattern = () => emit('download');
   text-align: right;
   font-weight: 600;
   color: #303133;
-}
-
-.custom-input-number {
-  width: 120px;
 }
 
 :deep(.el-input-number.is-controls-right .el-input__inner) {

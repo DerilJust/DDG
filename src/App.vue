@@ -24,15 +24,25 @@
             @image-selected="handleImageSelected" />
           <Controls v-model:gridWidth="gridWidth" v-model:gridHeight="gridHeight" v-model:colorCount="colorCount"
             v-model:brand="selectedBrand" v-model:showNumbers="showNumbers" v-model:editMode="editMode"
-            v-model:lockAspectRatio="lockAspectRatio" :imageRatio="imageRatioText"
-            @generate="generatePattern" @download="downloadPattern" />
+            v-model:lockAspectRatio="lockAspectRatio" :imageRatio="imageRatioText" @generate="generatePattern"
+            @download="downloadPattern" />
           <PatternInfo :infoText="infoText" :colorStats="colorStats" />
         </el-aside>
         <el-main class="main">
+          <!-- 原始图片卡片 -->
           <SourceImageCard :image-url="originalImageUrl" />
-          <PreviewSection ref="previewSection" :originalImageUrl="originalImageUrl" :gridWidth="gridWidth"
-            :gridHeight="gridHeight" :cellSize="showNumbers ? 20 : 10" :axisMargin="showNumbers ? 44 : 12"
-            :editMode="editMode" :editType="editType" @cell-selected="setPendingSelection" @area-selected="setPendingSelection" />
+
+          <!-- 拼豆图纸预览（支持缩放和平移） -->
+          <div class="pattern-section">
+            <PreviewSection ref="previewSection" :originalImageUrl="originalImageUrl" :gridWidth="gridWidth"
+              :gridHeight="gridHeight" :cellSize="showNumbers ? 20 : 10" :axisMargin="showNumbers ? 44 : 12"
+              :editMode="editMode" :editType="editType" @cell-selected="setPendingSelection"
+              @area-selected="setPendingSelection" />
+          </div>
+
+          <!-- 导出预览（可收起） -->
+          <ExportPreview ref="exportPreview" :colorStats="colorStats" :patternGrid="patternGrid"
+            :showNumbers="showNumbers" :gridWidth="gridWidth" :gridHeight="gridHeight" :selectedBrand="selectedBrand" />
         </el-main>
         <el-aside width="320px" class="edit-aside" v-show="editMode">
           <EditPalette :palette="patternPalette" :activeColor="selectedEditColor" :editMode="editMode"
@@ -49,7 +59,11 @@
 </template>
 
 <script setup>
+// ============ 导入依赖 ============
+// Vue核心API
 import { ref, computed, watch } from 'vue';
+
+// 导入组件
 import UploadSection from './components/UploadSection.vue';
 import Controls from './components/Controls.vue';
 import PreviewSection from './components/PreviewSection.vue';
@@ -57,58 +71,105 @@ import PatternInfo from './components/PatternInfo.vue';
 import SourceImageCard from './components/SourceImageCard.vue';
 import EditPalette from './components/EditPalette.vue';
 import CropperDialog from './components/CropperDialog.vue';
+import ExportPreview from './components/ExportPreview.vue';
+
+// 导入配置数据
 import colorSystemMapping from '../src/colorMap/colorSystemMapping.json';
+
+// 导入Element Plus图标
 import { Fold, Expand } from '@element-plus/icons-vue';
 
-// 响应式数据
+// 导入工具函数
+import {
+  gcd,
+  findClosestColor,
+  quantizeColorsUtil,
+  buildPatternPalette,
+  buildColorStats,
+  setGridSizeByImageRatio as computeGridSizeByImageRatio
+} from './utils/patternUtils';
+import { getPendingCells as getPendingCellsUtil } from './utils/selectionUtils';
+
+// ============ 响应式数据 ============
+/** 原始上传的图片文件 */
 const originalImage = ref(null);
+
+/** 原始图片的URL（可以是上传或裁剪后的） */
 const originalImageUrl = ref('');
+
+/** 拼豆图纸的格子宽度（X轴格数） */
 const gridWidth = ref(30);
+
+/** 拼豆图纸的格子高度（Y轴格数） */
 const gridHeight = ref(30);
+
+/** 颜色量化的数量（图纸中最多使用的颜色数） */
 const colorCount = ref(20);
+
+/** 页面信息文本提示 */
 const infoText = ref('请上传图片并生成图纸');
+
+/** 所有可用的拼豆颜色数组 */
 const perlerColors = ref([]);
+
+/** 预览组件的引用 */
 const previewSection = ref(null);
+
+/** 当前选择的拼豆品牌（如MARD、Hama等） */
 const selectedBrand = ref('MARD');
+
+/** 是否显示拼豆编号 */
 const showNumbers = ref(false);
+
+/** 拼豆颜色统计数据 */
 const colorStats = ref([]);
+
+/** 拼豆图纸的二维数据数组 */
 const patternGrid = ref([]);
+
+/** 是否进入编辑模式 */
 const editMode = ref(false);
+
+/** 编辑类型（'click'=单个格子，'area'=框选区域） */
 const editType = ref('click');
+
+/** 当前选中的编辑颜色 */
 const selectedEditColor = ref(null);
+
+/** 待编辑的选择区域（还未确认修改的选择） */
 const pendingSelection = ref(null);
+
+/** 是否锁定宽高比 */
 const lockAspectRatio = ref(false);
+
+/** 原始图片的尺寸 */
 const originalImageSize = ref({ width: 0, height: 0 });
+
+/** 左侧边栏是否已收起 */
 const isCollapsed = ref(false);
 
-const patternPalette = computed(() => {
-  const usageMap = {};
-  patternGrid.value.forEach((row) => {
-    row.forEach((cell) => {
-      if (cell?.color) {
-        const key = `${cell.color.r},${cell.color.g},${cell.color.b}`;
-        usageMap[key] = (usageMap[key] || 0) + 1;
-      }
-    });
-  });
+/** 图片裁剪对话框的可见性 */
+const cropperVisible = ref(false);
 
-  return perlerColors.value
-    .filter(color => color.info && color.info[selectedBrand.value])
-    .map(color => ({
-      code: color.info[selectedBrand.value],
-      color,
-      count: usageMap[`${color.r},${color.g},${color.b}`] || 0
-    }))
-    .sort((a, b) => {
-      const countDiff = b.count - a.count;
-      if (countDiff !== 0) return countDiff;
-      return a.code.localeCompare(b.code);
-    });
-});
+/** 裁剪所需的图片数据 */
+const imageData = ref(null);
 
-const gcd = (a, b) => {
-  return b === 0 ? a : gcd(b, a % b);
+/** 导出预览组件的引用 */
+const exportPreview = ref(null);
+
+/**
+ * 获取可用于绘图的canvas实例
+ * 有时组件 expose 的 canvas 可能是 ref 对象，也可能是 DOM 节点
+ */
+const getPreviewCanvas = () => {
+  const canvasRef = previewSection.value?.patternCanvas;
+  if (!canvasRef) return null;
+  return canvasRef.getContext ? canvasRef : canvasRef.value;
 };
+
+const patternPalette = computed(() => {
+  return buildPatternPalette(perlerColors.value, patternGrid.value, selectedBrand.value);
+});
 
 const imageRatioText = computed(() => {
   const { width, height } = originalImageSize.value;
@@ -145,10 +206,6 @@ watch([selectedBrand, patternPalette], () => {
   }
 });
 
-// 裁剪相关数据
-const cropperVisible = ref(false);
-const imageData = ref(null);
-
 // 切换侧边栏
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value;
@@ -176,22 +233,10 @@ const loadColorData = () => {
 
 // 处理图片上传
 const setGridSizeByImageRatio = (width, height) => {
-  if (!width || !height) return;
-  const maxSize = 100;
-  const aspect = width / height;
-  if (width <= maxSize && height <= maxSize) {
-    gridWidth.value = Math.max(1, Math.round(width));
-    gridHeight.value = Math.max(1, Math.round(height));
-    return;
-  }
-
-  if (aspect >= 1) {
-    gridWidth.value = maxSize;
-    gridHeight.value = Math.max(1, Math.round(maxSize / aspect));
-  } else {
-    gridHeight.value = maxSize;
-    gridWidth.value = Math.max(1, Math.round(maxSize * aspect));
-  }
+  const size = computeGridSizeByImageRatio(width, height);
+  if (!size.width || !size.height) return;
+  gridWidth.value = size.width;
+  gridHeight.value = size.height;
 };
 
 const handleImageUploaded = (data) => {
@@ -212,128 +257,115 @@ const handleImageSelected = (data) => {
   cropperVisible.value = true;
 };
 
-// 找到最接近的颜色
-const findClosestColor = (color, colorMap) => {
-  let closestColor = colorMap[0];
-  let minDistance = Infinity;
-
-  colorMap.forEach(mapColor => {
-    const distance = Math.sqrt(
-      Math.pow(color.r - mapColor.r, 2) +
-      Math.pow(color.g - mapColor.g, 2) +
-      Math.pow(color.b - mapColor.b, 2)
-    );
-
-    if (distance < minDistance) {
-      minDistance = distance;
-      closestColor = mapColor;
-    }
-  });
-
-  return closestColor;
-};
-
-// 颜色量化
-const quantizeColors = (pixels, count) => {
-  const colorFreq = {};
-
-  for (let i = 0; i < pixels.length; i += 4) {
-    const r = pixels[i];
-    const g = pixels[i + 1];
-    const b = pixels[i + 2];
-
-    const closestColor = findClosestColor({ r, g, b }, perlerColors.value);
-    const key = `${closestColor.r},${closestColor.g},${closestColor.b}`;
-    colorFreq[key] = (colorFreq[key] || 0) + 1;
-  }
-
-  const sortedColors = Object.keys(colorFreq)
-    .sort((a, b) => colorFreq[b] - colorFreq[a])
-    .slice(0, count);
-
-  const colorMap = [];
-  sortedColors.forEach(colorStr => {
-    const [r, g, b] = colorStr.split(',').map(Number);
-    const colorObj = perlerColors.value.find(c => c.r === r && c.g === g && c.b === b);
-    colorMap.push(colorObj || { r, g, b });
-  });
-
-  return colorMap;
-};
-
 const refreshColorStats = () => {
-  const usage = {};
-  patternGrid.value.forEach((row) => {
-    row.forEach((cell) => {
-      const key = `${cell.color.r},${cell.color.g},${cell.color.b}`;
-      if (!usage[key]) {
-        usage[key] = {
-          color: cell.color,
-          count: 0,
-          code: cell.code || ''
-        };
-      }
-      usage[key].count++;
-    });
-  });
-
-  colorStats.value = Object.values(usage)
-    .filter(item => item.code)
-    .sort((a, b) => b.count - a.count);
-
+  colorStats.value = buildColorStats(patternGrid.value);
   if (!selectedEditColor.value && colorStats.value.length) {
     selectedEditColor.value = colorStats.value[0].color;
   }
 };
 
+/**
+ * 渲染拼豆图纸到canvas
+ * 功能：绘制网格、颜色、编号、坐标轴等
+ * 细节：每5格绘制粗线，其他位置细线
+ */
 const renderPatternGrid = () => {
-  const canvas = previewSection.value?.patternCanvas;
+  // 获取canvas引用
+  const canvas = getPreviewCanvas();
   if (!canvas || !patternGrid.value.length) return;
 
+  // 获取2D绘图上下文
   const ctx = canvas.getContext('2d');
-  const cellSize = showNumbers.value ? 20 : 10;
-  const axisMargin = showNumbers.value ? 44 : 12;
-  const labelInterval = cellSize >= 20 ? 1 : 5;
 
+  // ========== 配置参数 ==========
+  // 单个格子的像素大小
+  const cellSize = showNumbers.value ? 40 : 20;
+  // 坐标轴的边距
+  const axisMargin = showNumbers.value ? 44 : 12;
+  // 坐标标签的显示间隔
+  const labelInterval = cellSize >= 40 ? 1 : 5;
+
+  // ========== 初始化canvas ==========
+  // 计算canvas总大小（包括坐标轴）
   canvas.width = gridWidth.value * cellSize + axisMargin * 2;
   canvas.height = gridHeight.value * cellSize + axisMargin * 2;
 
+  // 清空canvas内容
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // ========== 绘制网格格子和颜色 ==========
   for (let y = 0; y < gridHeight.value; y++) {
     for (let x = 0; x < gridWidth.value; x++) {
+      // 获取格子数据
       const cell = patternGrid.value[y]?.[x];
       if (!cell) continue;
+
+      // 计算格子的实际像素位置
       const cellX = axisMargin + x * cellSize;
       const cellY = axisMargin + y * cellSize;
 
+      // 绘制格子颜色
       ctx.fillStyle = `rgb(${cell.color.r}, ${cell.color.g}, ${cell.color.b})`;
       ctx.fillRect(cellX, cellY, cellSize, cellSize);
-      ctx.strokeStyle = '#ddd';
-      ctx.lineWidth = 0.5;
-      ctx.strokeRect(cellX, cellY, cellSize, cellSize);
 
+      // ========== 绘制网格线（每5格粗线，其他细线）==========
+      // 判断是否在5格的边界上
+      const isGridLine5X = (x + 1) % 5 === 0;
+      const isGridLine5Y = (y + 1) % 5 === 0;
+
+      // 根据位置决定线条粗细
+      if (isGridLine5X || isGridLine5Y) {
+        // 5格边界线：粗线（黑色）
+        ctx.beginPath();
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1.5;
+        if (isGridLine5X) {
+          ctx.moveTo(cellX + cellSize, cellY);
+          ctx.lineTo(cellX + cellSize, cellY + cellSize);
+          ctx.stroke();
+        }
+        if (isGridLine5Y) {
+          ctx.moveTo(cellX, cellY + cellSize);
+          ctx.lineTo(cellX + cellSize, cellY + cellSize);
+          ctx.stroke();
+        }
+      } else {
+        // 其他边界线：细线（浅灰色）
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(cellX, cellY, cellSize, cellSize);
+      }
+
+      // ========== 绘制拼豆编号 ==========
       if (showNumbers.value && cell.code) {
         const colorCode = cell.code;
         let fontSize = cellSize * 0.55;
+
+        // 设置字体
         ctx.font = `${fontSize}px Arial`;
         const textWidth = ctx.measureText(colorCode).width;
+
+        // 如果文字超过格子宽度，缩小字体
         if (textWidth > cellSize * 0.75) {
           fontSize = (cellSize * 0.75 / textWidth) * fontSize;
           ctx.font = `${fontSize}px Arial`;
         }
+
+        // 计算文字位置（居中）
         const textX = cellX + cellSize / 2;
         const textY = cellY + cellSize / 2;
         const padding = 4;
 
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-        ctx.fillRect(
-          textX - textWidth / 2 - padding,
-          textY - fontSize / 2 - padding / 2,
-          textWidth + padding * 2,
-          fontSize + padding
-        );
+        // 绘制文字背景（半透明白色）
+        // ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        // ctx.fillRect(
+        //   textX - textWidth / 2 - padding,
+        //   textY - fontSize / 2 - padding / 2,
+        //   textWidth + padding * 2,
+        //   fontSize + padding
+        // );
 
+        // 绘制文字（含描边和填充以增强可读性）
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
@@ -345,14 +377,18 @@ const renderPatternGrid = () => {
     }
   }
 
+  // ========== 绘制坐标轴 ==========
   if (showNumbers.value) {
     ctx.save();
+
+    // 绘制坐标轴背景（白色）
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, axisMargin);
     ctx.fillRect(0, 0, axisMargin, canvas.height);
     ctx.fillRect(0, canvas.height - axisMargin, canvas.width, axisMargin);
     ctx.fillRect(canvas.width - axisMargin, 0, axisMargin, canvas.height);
 
+    // 绘制坐标轴边框线
     ctx.strokeStyle = '#666';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -362,11 +398,13 @@ const renderPatternGrid = () => {
     ctx.lineTo(canvas.width - axisMargin, axisMargin);
     ctx.stroke();
 
+    // ========== 绘制X轴标签 ==========
     ctx.fillStyle = '#333';
     ctx.font = 'bold 12px Arial';
     ctx.textBaseline = 'middle';
 
     for (let i = 0; i < gridWidth.value; i++) {
+      // 仅在边界和间隔位置显示标签
       if (i === 0 || i === gridWidth.value - 1 || (i + 1) % labelInterval === 0) {
         const label = `${i + 1}`;
         const x = axisMargin + i * cellSize + cellSize / 2;
@@ -379,7 +417,9 @@ const renderPatternGrid = () => {
       }
     }
 
+    // ========== 绘制Y轴标签 ==========
     for (let i = 0; i < gridHeight.value; i++) {
+      // 仅在边界和间隔位置显示标签
       if (i === 0 || i === gridHeight.value - 1 || (i + 1) % labelInterval === 0) {
         const label = `${i + 1}`;
         const y = axisMargin + i * cellSize + cellSize / 2;
@@ -392,11 +432,16 @@ const renderPatternGrid = () => {
         ctx.fillText(label, rightX, y);
       }
     }
+
     ctx.restore();
   }
 
+  // ========== 绘制编辑预览 ==========
+  // 绘制待定的编辑预览（鼠标选中但未确认的区域）
   drawPendingPreview(ctx, axisMargin, cellSize);
-  drawStatsToCanvas(ctx, canvas, cellSize);
+
+  // ========== 绘制统计信息（仅保留在导出预览中）==========
+  // 注：现在统计信息只在导出预览中显示，主图纸中不显示
 };
 
 const updateCellColor = (gridX, gridY, color) => {
@@ -406,33 +451,10 @@ const updateCellColor = (gridX, gridY, color) => {
   cell.code = color.info?.[selectedBrand.value] || cell.code || '';
 };
 
-const getPendingCells = () => {
-  if (!pendingSelection.value || !selectedEditColor.value) return [];
-
-  if (pendingSelection.value.type === 'cell') {
-    const x = Math.max(0, Math.min(gridWidth.value - 1, pendingSelection.value.x));
-    const y = Math.max(0, Math.min(gridHeight.value - 1, pendingSelection.value.y));
-    return [{ x, y }];
-  }
-
-  const x1 = Math.max(0, Math.min(gridWidth.value - 1, Math.min(pendingSelection.value.x1, pendingSelection.value.x2)));
-  const y1 = Math.max(0, Math.min(gridHeight.value - 1, Math.min(pendingSelection.value.y1, pendingSelection.value.y2)));
-  const x2 = Math.max(0, Math.min(gridWidth.value - 1, Math.max(pendingSelection.value.x1, pendingSelection.value.x2)));
-  const y2 = Math.max(0, Math.min(gridHeight.value - 1, Math.max(pendingSelection.value.y1, pendingSelection.value.y2)));
-  const cells = [];
-
-  for (let y = y1; y <= y2; y++) {
-    for (let x = x1; x <= x2; x++) {
-      cells.push({ x, y });
-    }
-  }
-  return cells;
-};
-
 const drawPendingPreview = (ctx, axisMargin, cellSize) => {
   if (!pendingSelection.value || !selectedEditColor.value) return;
 
-  const previewCells = getPendingCells();
+  const previewCells = getPendingCellsUtil(pendingSelection.value, gridWidth.value, gridHeight.value);
   if (!previewCells.length) return;
 
   ctx.save();
@@ -474,7 +496,7 @@ const setPendingSelection = (selection) => {
 const confirmPendingEdit = () => {
   if (!pendingSelection.value || !selectedEditColor.value) return;
 
-  const pendingCells = getPendingCells();
+  const pendingCells = getPendingCellsUtil(pendingSelection.value, gridWidth.value, gridHeight.value);
   pendingCells.forEach(({ x, y }) => {
     updateCellColor(x, y, selectedEditColor.value);
   });
@@ -521,7 +543,12 @@ const generatePattern = () => {
     return;
   }
 
-  const canvas = previewSection.value.patternCanvas;
+  const canvas = getPreviewCanvas();
+  if (!canvas) {
+    alert('无法获取画布，请稍后重试');
+    return;
+  }
+
   const ctx = canvas.getContext('2d');
 
   // 设置画布大小
@@ -543,7 +570,7 @@ const generatePattern = () => {
     const pixels = imageData.data;
 
     // 颜色量化
-    const colorMap = quantizeColors(pixels, colorCount.value);
+    const colorMap = quantizeColorsUtil(pixels, colorCount.value, perlerColors.value);
 
     const cellSize = showNumbers.value ? 20 : 10;
     const axisMargin = showNumbers.value ? 44 : 12;
@@ -589,8 +616,8 @@ const generatePattern = () => {
 
 // 下载图纸
 const downloadPattern = () => {
-  const canvas = previewSection.value.patternCanvas;
-  if (canvas.width === 0) {
+  const canvas = getPreviewCanvas();
+  if (!canvas || canvas.width === 0) {
     alert('请先生成拼豆图纸');
     return;
   }
@@ -829,13 +856,38 @@ body {
 .main {
   background-color: #f0f2f5;
   padding: 20px;
-  overflow: auto;
+  overflow-y: auto;
   background-image: linear-gradient(45deg, #f5f7fa 25%, transparent 25%, transparent 75%, #f5f7fa 75%, #f5f7fa),
     linear-gradient(45deg, #f5f7fa 25%, transparent 25%, transparent 75%, #f5f7fa 75%, #f5f7fa);
   background-size: 20px 20px;
   background-position: 0 0, 10px 10px;
   height: 100%;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/**
+ * 拼豆图纸编辑区域
+ * 包含canvas和缩放平移控件
+ */
+.pattern-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 400px;
+}
+
+/**
+ * 图纸区域的标题
+ */
+.section-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #303133;
+  padding: 0 4px;
 }
 
 .el-container {
