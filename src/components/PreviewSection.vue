@@ -29,9 +29,8 @@
           </canvas>
         </div>
 
-        <!-- 选择框覆盖层 -->
+        <!-- 单个格子选中覆盖层 -->
         <div v-if="selectedCell" class="selection-overlay" :style="selectedCellStyle"></div>
-        <div v-if="selectionRect" class="selection-overlay area" :style="selectionRectStyle"></div>
 
         <!-- 缩放比例提示 -->
         <div class="zoom-info">{{ Math.round(scale * 100) }}%</div>
@@ -39,11 +38,12 @@
 
       <!-- 控制按钮 -->
       <div class="canvas-controls">
+        <el-button type="info" size="small" @click="zoomOut">-</el-button>
+        <el-button type="info" size="small" @click="zoomIn">+</el-button>
         <el-button type="info" size="small" @click="resetViewport">
-          <!-- <el-icon><Zoom /></el-icon> -->
           重置视图
         </el-button>
-        <span class="control-hint">滚轮缩放 | 拖拽移动</span>
+        <span class="control-hint">滚轮上下移动 | Ctrl+滚轮缩放</span>
       </div>
     </el-card>
   </div>
@@ -59,13 +59,6 @@ interface Point {
   x: number;
   y: number;
   inGrid?: boolean;
-}
-
-interface SelectionRect {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
 }
 
 interface PatternCell {
@@ -101,7 +94,7 @@ const props = defineProps({
   /** 单个格子的像素大小 */
   cellSize: {
     type: Number,
-    default: 10
+    default: 20
   },
   /** 坐标轴的边距 */
   axisMargin: {
@@ -113,11 +106,6 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  /** 编辑类型：'click'=单个格子选择，'area'=框选区域 */
-  editType: {
-    type: String as PropType<'click' | 'area'>,
-    default: 'click'
-  },
   /** 拼豆图纸数据 */
   patternGrid: {
     type: Array as PropType<PatternCell[][]>,
@@ -126,7 +114,7 @@ const props = defineProps({
 });
 
 // 事件发射定义
-const emit = defineEmits(['cell-selected', 'area-selected']);
+const emit = defineEmits(['cell-selected']);
 
 /**
  * ============ 缩放平移相关状态 ============
@@ -140,13 +128,13 @@ const offsetX = ref<number>(0);
 /** Y轴平移偏移量 */
 const offsetY = ref<number>(0);
 
-/** 是否正在拖拖 */
+/** 是否正在拖拽 */
 const isDragging = ref<boolean>(false);
 
-/** 拖拖开始时的X坐标 */
+/** 拖拽开始时的X坐标 */
 const dragStartX = ref<number>(0);
 
-/** 拖拖开始时的Y坐标 */
+/** 拖拽开始时的Y坐标 */
 const dragStartY = ref<number>(0);
 
 /**
@@ -160,12 +148,6 @@ const containerRef = ref<HTMLElement | null>(null);
 
 /** 指针是否按下 */
 const pointerDown = ref<boolean>(false);
-
-/** 框选开始位置 */
-const selectionStart = ref<Point | null>(null);
-
-/** 框选区域 */
-const selectionRect = ref<SelectionRect | null>(null);
 
 /** 单个选中格子 */
 const selectedCell = ref<Point | null>(null);
@@ -206,20 +188,6 @@ const selectedCellStyle = computed<Record<string, string>>(() => {
 /**
  * 框选区域的样式
  */
-const selectionRectStyle = computed<Record<string, string>>(() => {
-  if (!selectionRect.value) return { left: '0px', top: '0px', width: '0px', height: '0px' };
-  const x1 = Math.min(selectionRect.value.x1, selectionRect.value.x2);
-  const y1 = Math.min(selectionRect.value.y1, selectionRect.value.y2);
-  const x2 = Math.max(selectionRect.value.x1, selectionRect.value.x2);
-  const y2 = Math.max(selectionRect.value.y1, selectionRect.value.y2);
-  const displayScale = getDisplayScale();
-  return {
-    left: `${(props.axisMargin + x1 * props.cellSize) * displayScale.x * scale.value + offsetX.value}px`,
-    top: `${(props.axisMargin + y1 * props.cellSize) * displayScale.y * scale.value + offsetY.value}px`,
-    width: `${(x2 - x1 + 1) * props.cellSize * displayScale.x * scale.value}px`,
-    height: `${(y2 - y1 + 1) * props.cellSize * displayScale.y * scale.value}px`
-  };
-});
 
 /**
  * ============ 工具方法 ============
@@ -269,24 +237,6 @@ const getGridCell = (e: PointerEvent): Point | null => {
 /**
  * 约束点到网格范围内
  */
-const clampPointToGridLocal = (x: number, y: number) => {
-  return {
-    x: Math.max(0, Math.min(props.gridWidth - 1, x)),
-    y: Math.max(0, Math.min(props.gridHeight - 1, y))
-  };
-};
-
-/**
- * 规范化选择区域
- */
-const normalizeSelectionLocal = (rect: SelectionRect) => {
-  const x1 = Math.max(0, Math.min(props.gridWidth - 1, rect.x1));
-  const y1 = Math.max(0, Math.min(props.gridHeight - 1, rect.y1));
-  const x2 = Math.max(0, Math.min(props.gridWidth - 1, rect.x2));
-  const y2 = Math.max(0, Math.min(props.gridHeight - 1, rect.y2));
-  return { type: 'area', x1, y1, x2, y2 };
-};
-
 /**
  * ============ 交互事件处理 ============
  */
@@ -296,21 +246,19 @@ const normalizeSelectionLocal = (rect: SelectionRect) => {
  * @param {WheelEvent} e - 滚轮事件
  */
 const handleWheel = (e: WheelEvent) => {
-  // 计算缩放因子（向上滚+10%，向下滚-10%）
-  const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-  const newScale = Math.max(0.5, Math.min(3, scale.value * zoomFactor));
-  
-  // 保持鼠标位置为缩放中心
-  if (!containerRef.value) return;
-  const rect = containerRef.value.getBoundingClientRect();
-  const mouseX = e.clientX - rect.left;
-  const mouseY = e.clientY - rect.top;
-  
-  // 缩放计算：调整偏移量使得鼠标位置保持不变
-  offsetX.value = mouseX - (mouseX - offsetX.value) * (newScale / scale.value);
-  offsetY.value = mouseY - (mouseY - offsetY.value) * (newScale / scale.value);
-  
-  scale.value = newScale;
+  if (e.ctrlKey || e.metaKey) {
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    const newScale = Math.max(0.5, Math.min(3, scale.value * zoomFactor));
+    if (!containerRef.value) return;
+    const rect = containerRef.value.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    offsetX.value = mouseX - (mouseX - offsetX.value) * (newScale / scale.value);
+    offsetY.value = mouseY - (mouseY - offsetY.value) * (newScale / scale.value);
+    scale.value = newScale;
+    return;
+  }
+  offsetY.value -= e.deltaY;
 };
 
 /**
@@ -318,9 +266,8 @@ const handleWheel = (e: WheelEvent) => {
  * @param {MouseEvent} e - 鼠标事件
  */
 const handleMouseDown = (e: MouseEvent) => {
-  // 只在不在编辑模式下允许拖拖
+  // 只在不在编辑模式下允许拖拽
   if (props.editMode) return;
-  
   isDragging.value = true;
   dragStartX.value = e.clientX - offsetX.value;
   dragStartY.value = e.clientY - offsetY.value;
@@ -352,22 +299,14 @@ const handleMouseUp = (): void => {
 const handleCanvasPointerDown = (e: PointerEvent) => {
   if (!props.editMode || !patternCanvas.value) return;
   e.preventDefault();
-  
+
   const cell = getGridCell(e);
   if (!cell || !cell.inGrid) return;
   const { x, y } = cell;
 
-  // 点击模式：单个格子选择
-  if (props.editType === 'click') {
-    selectedCell.value = { x, y };
-    emit('cell-selected', { type: 'cell', x, y });
-    return;
-  }
-
-  // 框选模式：记录起点
   pointerDown.value = true;
-  selectionStart.value = { x, y };
-  selectionRect.value = { x1: x, y1: y, x2: x, y2: y };
+  selectedCell.value = { x, y };
+  emit('cell-selected', { type: 'cell', x, y });
   if (patternCanvas.value.setPointerCapture) {
     patternCanvas.value.setPointerCapture(e.pointerId);
   }
@@ -378,20 +317,16 @@ const handleCanvasPointerDown = (e: PointerEvent) => {
  * @param {PointerEvent} e - 指针事件
  */
 const handleCanvasPointerMove = (e: PointerEvent) => {
-  if (!props.editMode || props.editType !== 'area' || !pointerDown.value || !selectionStart.value) return;
+  if (!props.editMode || !pointerDown.value) return;
   e.preventDefault();
-  
+
   const cell = getGridCell(e);
-  if (!cell) return;
+  if (!cell || !cell.inGrid) return;
   const { x, y } = cell;
-  const point = clampPointToGridLocal(x, y);
-  
-  selectionRect.value = {
-    x1: selectionStart.value.x,
-    y1: selectionStart.value.y,
-    x2: point.x,
-    y2: point.y
-  };
+  if (selectedCell.value?.x === x && selectedCell.value?.y === y) return;
+
+  selectedCell.value = { x, y };
+  emit('cell-selected', { type: 'cell', x, y });
 };
 
 /**
@@ -400,11 +335,7 @@ const handleCanvasPointerMove = (e: PointerEvent) => {
  */
 const handleCanvasPointerUp = (e: PointerEvent) => {
   if (!props.editMode) return;
-  
-  if (props.editType === 'area' && selectionRect.value) {
-    emit('area-selected', normalizeSelectionLocal(selectionRect.value));
-  }
-  
+
   pointerDown.value = false;
   if (patternCanvas.value && e?.pointerId != null && patternCanvas.value.releasePointerCapture) {
     patternCanvas.value.releasePointerCapture(e.pointerId);
@@ -420,6 +351,34 @@ const resetViewport = (): void => {
   offsetY.value = 0;
 };
 
+const zoomIn = (): void => {
+  const newScale = Math.min(3, scale.value + 0.1);
+  if (!containerRef.value) {
+    scale.value = newScale;
+    return;
+  }
+  const rect = containerRef.value.getBoundingClientRect();
+  const mouseX = rect.width / 2;
+  const mouseY = rect.height / 2;
+  offsetX.value = mouseX - (mouseX - offsetX.value) * (newScale / scale.value);
+  offsetY.value = mouseY - (mouseY - offsetY.value) * (newScale / scale.value);
+  scale.value = newScale;
+};
+
+const zoomOut = (): void => {
+  const newScale = Math.max(0.5, scale.value - 0.1);
+  if (!containerRef.value) {
+    scale.value = newScale;
+    return;
+  }
+  const rect = containerRef.value.getBoundingClientRect();
+  const mouseX = rect.width / 2;
+  const mouseY = rect.height / 2;
+  offsetX.value = mouseX - (mouseX - offsetX.value) * (newScale / scale.value);
+  offsetY.value = mouseY - (mouseY - offsetY.value) * (newScale / scale.value);
+  scale.value = newScale;
+};
+
 /**
  * ============ 监听和生命周期 ============
  */
@@ -429,22 +388,9 @@ const resetViewport = (): void => {
  */
 watch(() => props.editMode, (value) => {
   if (!value) {
-    // 退出编辑模式时重置选择
     pointerDown.value = false;
-    selectionStart.value = null;
-    selectionRect.value = null;
     selectedCell.value = null;
   }
-});
-
-/**
- * 监听编辑类型变化
- */
-watch(() => props.editType, () => {
-  pointerDown.value = false;
-  selectionStart.value = null;
-  selectionRect.value = null;
-  selectedCell.value = null;
 });
 
 /**
@@ -474,7 +420,7 @@ const drawPattern = (): void => {
     gridHeight: props.gridHeight,
     cellSize: props.cellSize,
     axisMargin: props.axisMargin,
-    showNumbers: props.cellSize >= 20,
+    showNumbers: props.cellSize >= 40,
     gridLineInterval: 5
   });
 };

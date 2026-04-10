@@ -88,17 +88,8 @@
             </div>
           </el-form-item>
 
-          <!-- 编辑模式 -->
-          <el-form-item label="编辑模式">
-            <div class="switch-wrapper">
-              <span :class="['switch-label', !editMode ? 'active-text' : '']">关闭</span>
-              <el-switch v-model="editMode" />
-              <span :class="['switch-label', editMode ? 'active-text' : '']">开启</span>
-            </div>
-          </el-form-item>
         </el-form>
       </div>
-
       <!-- 底部按钮 -->
       <div class="button-footer">
         <el-button type="primary" class="btn-generate" @click="generatePattern">
@@ -126,12 +117,11 @@ const props = defineProps({
   colorCount: { type: Number, default: 20 },
   brand: { type: String, default: 'MARD' },
   showNumbers: { type: Boolean, default: false },
-  editMode: { type: Boolean, default: false },
   imageRatio: { type: String, default: '暂无图片' },
   lockAspectRatio: { type: Boolean, default: false }
 });
 
-const emit = defineEmits(['update:gridWidth', 'update:gridHeight', 'update:colorCount', 'update:brand', 'update:showNumbers', 'update:editMode', 'update:lockAspectRatio', 'generate', 'download']);
+const emit = defineEmits(['update:gridWidth', 'update:gridHeight', 'update:colorCount', 'update:brand', 'update:showNumbers', 'update:lockAspectRatio', 'generate', 'download']);
 
 // 响应式绑定
 const gridWidth = computed<number>({
@@ -153,10 +143,6 @@ const selectedBrand = computed<string>({
 const showNumbers = computed<boolean>({
   get: () => props.showNumbers,
   set: (val) => emit('update:showNumbers', val)
-});
-const editMode = computed<boolean>({
-  get: () => props.editMode,
-  set: (val) => emit('update:editMode', val)
 });
 const imageRatio = computed<string>(() => props.imageRatio);
 const lockAspectRatio = computed<boolean>({
@@ -262,6 +248,21 @@ const downloadPattern = (): void => emit('download');
   display: flex;
   gap: 15px;
   background-color: #fff;
+  border-top: 1px solid #e9ecef;
+}
+
+.tool-button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tool-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  background-color: #f7f9fc;
   border-top: 1px solid #e9ecef;
 }
 

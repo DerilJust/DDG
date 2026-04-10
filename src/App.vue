@@ -23,9 +23,9 @@
           <UploadSection :image-url="originalImageUrl" @image-uploaded="handleImageUploaded"
             @image-selected="handleImageSelected" />
           <Controls v-model:gridWidth="gridWidth" v-model:gridHeight="gridHeight" v-model:colorCount="colorCount"
-            v-model:brand="selectedBrand" v-model:showNumbers="showNumbers" v-model:editMode="editMode"
-            v-model:lockAspectRatio="lockAspectRatio" :imageRatio="imageRatioText" @generate="generatePattern"
-            @download="downloadPattern" />
+            v-model:brand="selectedBrand" v-model:showNumbers="showNumbers"
+            v-model:lockAspectRatio="lockAspectRatio" :imageRatio="imageRatioText"
+            @generate="generatePattern" @download="downloadPattern" />
           <PatternInfo :infoText="infoText" :colorStats="colorStats" />
         </el-aside>
         <el-main class="main">
@@ -51,9 +51,16 @@
                 拼豆图纸
               </template>
               <PreviewSection ref="previewSection" :originalImageUrl="originalImageUrl" :gridWidth="gridWidth"
-                :gridHeight="gridHeight" :cellSize="showNumbers ? 20 : 10" :axisMargin="showNumbers ? 44 : 12"
-                :editMode="editMode" :editType="editType" :patternGrid="patternGrid"
-                @cell-selected="setPendingSelection" @area-selected="setPendingSelection" />
+                :gridHeight="gridHeight" :cellSize="showNumbers ? 40 : 20" :axisMargin="showNumbers ? 44 : 12"
+                :editMode="isEditActive" :patternGrid="patternGrid"
+                @cell-selected="setPendingSelection" />
+              <div class="pattern-editor-panel">
+                <EditPalette :palette="effectivePalette" :activeColor="selectedEditColor" :editMode="editMode"
+                  :selectedTool="selectedTool" :canUndo="undoStack.length > 0" :canRedo="redoStack.length > 0"
+                  @select="selectedEditColor = $event" @fill-all="handleFillAll"
+                  @update:editMode="editMode = $event"
+                  @update:selectedTool="selectedTool = $event" @undo="handleUndo" @redo="handleRedo" />
+              </div>
             </el-tab-pane>
 
             <!-- 导出预览标签页 -->
@@ -70,12 +77,6 @@
             </el-tab-pane>
           </el-tabs>
         </el-main>
-        <el-aside width="320px" class="edit-aside" v-show="editMode">
-          <EditPalette :palette="patternPalette" :activeColor="selectedEditColor" :editMode="editMode"
-            :editType="editType" :hasSelection="!!pendingSelection" :hasPendingColor="!!selectedEditColor"
-            @update:editMode="editMode = $event" @update:editType="editType = $event" @select="selectEditColor"
-            @fill-all="fillAllWithSelectedColor" @confirm-edit="confirmPendingEdit" @cancel-edit="cancelPendingEdit" />
-        </el-aside>
       </el-container>
     </el-container>
 
@@ -93,9 +94,9 @@ import { ref, computed, watch, nextTick } from 'vue';
 import UploadSection from './components/UploadSection.vue';
 import Controls from './components/Controls.vue';
 import PreviewSection from './components/PreviewSection.vue';
+import EditPalette from './components/EditPalette.vue';
 import PatternInfo from './components/PatternInfo.vue';
 import SourceImageCard from './components/SourceImageCard.vue';
-import EditPalette from './components/EditPalette.vue';
 import CropperDialog from './components/CropperDialog.vue';
 import ExportPreview from './components/ExportPreview.vue';
 
@@ -111,24 +112,15 @@ import {
   findClosestColor,
   quantizeColorsUtil,
   buildPatternPalette,
+  buildBrandPalette,
   buildColorStats,
   setGridSizeByImageRatio as computeGridSizeByImageRatio
 } from './utils/patternUtils';
 import type { PerlerColor, PatternCell, PaletteItem, ColorStat } from './utils/patternUtils';
-import { getPendingCells as getPendingCellsUtil } from './utils/selectionUtils';
 import type { PendingSelection } from './utils/selectionUtils';
+import { clonePatternGrid, fillConnectedRegion } from './utils/editUtils';
 
 // ============ 类型定义 ============
-interface Selection {
-  type: 'cell' | 'area';
-  x?: number;
-  y?: number;
-  x1?: number;
-  y1?: number;
-  x2?: number;
-  y2?: number;
-}
-
 interface ImageData {
   offsetX: number;
   offsetY: number;
@@ -191,20 +183,46 @@ const showNumbers = ref(false);
 /** 拼豆颜色统计数据 */
 const colorStats = ref<ColorStat[]>([]);
 
+const blankCellColor: PerlerColor = {
+  r: 255,
+  g: 255,
+  b: 255,
+  hex: '#FFFFFF',
+  info: {}
+};
+
+const createBlankGrid = (width: number, height: number): PatternCell[][] => {
+  const grid: PatternCell[][] = [];
+  for (let y = 0; y < height; y++) {
+    const row: PatternCell[] = [];
+    for (let x = 0; x < width; x++) {
+      row.push({
+        color: { ...blankCellColor },
+        code: ''
+      });
+    }
+    grid.push(row);
+  }
+  return grid;
+};
+
 /** 拼豆图纸的二维数据数组 */
-const patternGrid = ref<PatternCell[][]>([]);
+const patternGrid = ref<PatternCell[][]>(createBlankGrid(gridWidth.value, gridHeight.value));
 
 /** 是否进入编辑模式 */
 const editMode = ref(false);
 
-/** 编辑类型（'click'=单个格子，'area'=框选区域） */
-const editType = ref<'click' | 'area'>('click');
-
 /** 当前选中的编辑颜色 */
 const selectedEditColor = ref<PerlerColor | null>(null);
 
-/** 待编辑的选择区域（还未确认修改的选择） */
-const pendingSelection = ref<Selection | null>(null);
+/** 当前选中的编辑工具 */
+const selectedTool = ref<'brush' | 'fill' | 'pan' | 'eraser' | 'eyedropper'>('brush');
+
+/** 撤销历史栈 */
+const undoStack = ref<PatternCell[][][]>([]);
+
+/** 重做历史栈 */
+const redoStack = ref<PatternCell[][][]>([]);
 
 /** 是否锁定宽高比 */
 const lockAspectRatio = ref<boolean>(false);
@@ -245,6 +263,15 @@ const patternPalette = computed<PaletteItem[]>(() => {
   return buildPatternPalette(perlerColors.value, patternGrid.value, selectedBrand.value);
 });
 
+const effectivePalette = computed<PaletteItem[]>(() => {
+  const hasUsedColors = patternPalette.value.some(item => item.count > 0);
+  return hasUsedColors ? patternPalette.value : buildBrandPalette(perlerColors.value, selectedBrand.value);
+});
+
+const isEditActive = computed<boolean>(() => {
+  return editMode.value && selectedTool.value !== 'pan';
+});
+
 const imageRatioText = computed<string>(() => {
   const { width, height } = originalImageSize.value;
   if (!width || !height) return '暂无图片';
@@ -271,12 +298,18 @@ watch(gridHeight, (newHeight) => {
   ratioLocking.value = false;
 });
 
-watch([selectedBrand, patternPalette], () => {
+watch([gridWidth, gridHeight], ([newWidth, newHeight]) => {
+  if (!originalImageUrl.value) {
+    patternGrid.value = createBlankGrid(newWidth, newHeight);
+  }
+});
+
+watch([selectedBrand, effectivePalette], () => {
   const currentHex = selectedEditColor.value?.hex;
-  const availableHexes = patternPalette.value.map(item => item.color.hex);
+  const availableHexes = effectivePalette.value.map(item => item.color.hex);
 
   if (!currentHex || !availableHexes.includes(currentHex)) {
-    selectedEditColor.value = patternPalette.value[0]?.color || null;
+    selectedEditColor.value = effectivePalette.value[0]?.color || null;
   }
 });
 
@@ -350,114 +383,137 @@ const refreshColorStats = (): void => {
   }
 };
 
-/**
- * 渲染待定选择预览（叠加在图案之上）
- * 注意：基础图案由 PreviewSection 自动渲染
- */
-const renderPatternGrid = (): void => {
-  const canvas = getPreviewCanvas();
-  if (!canvas) return;
+const getBrandCode = (color: PerlerColor): string => {
+  return color.info?.[selectedBrand.value] || '';
+};
+
+const pushHistory = (): void => {
   if (!patternGrid.value.length) return;
-
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-
-  const cellSize = showNumbers.value ? 40 : 20;
-  const axisMargin = showNumbers.value ? 44 : 12;
-
-  drawPendingPreview(ctx, axisMargin, cellSize);
-};
-
-const updateCellColor = (gridX: number, gridY: number, color: PerlerColor) => {
-  const cell = patternGrid.value[gridY]?.[gridX];
-  if (!cell || !color) return;
-  cell.color = color;
-  cell.code = color.info?.[selectedBrand.value] || cell.code || '';
-};
-
-const drawPendingPreview = (ctx: CanvasRenderingContext2D, axisMargin: number, cellSize: number) => {
-  if (!pendingSelection.value || !selectedEditColor.value) return;
-
-  const previewCells = getPendingCellsUtil(pendingSelection.value, gridWidth.value, gridHeight.value);
-  if (!previewCells.length) return;
-
-  ctx.save();
-  ctx.fillStyle = `rgba(${selectedEditColor.value.r}, ${selectedEditColor.value.g}, ${selectedEditColor.value.b}, 0.45)`;
-  previewCells.forEach(({ x, y }) => {
-    ctx.fillRect(axisMargin + x * cellSize, axisMargin + y * cellSize, cellSize, cellSize);
-  });
-
-  ctx.strokeStyle = '#409EFF';
-  ctx.lineWidth = 2;
-  if (pendingSelection.value.type === 'area') {
-    const x1 = Math.min(pendingSelection.value.x1 || 0, pendingSelection.value.x2 || 0);
-    const y1 = Math.min(pendingSelection.value.y1 || 0, pendingSelection.value.y2 || 0);
-    const x2 = Math.max(pendingSelection.value.x1 || 0, pendingSelection.value.x2 || 0);
-    const y2 = Math.max(pendingSelection.value.y1 || 0, pendingSelection.value.y2 || 0);
-    ctx.strokeRect(
-      axisMargin + x1 * cellSize,
-      axisMargin + y1 * cellSize,
-      (x2 - x1 + 1) * cellSize,
-      (y2 - y1 + 1) * cellSize
-    );
-  } else {
-    const x = pendingSelection.value.x || 0;
-    const y = pendingSelection.value.y || 0;
-    ctx.strokeRect(
-      axisMargin + x * cellSize,
-      axisMargin + y * cellSize,
-      cellSize,
-      cellSize
-    );
+  undoStack.value.push(clonePatternGrid(patternGrid.value));
+  if (undoStack.value.length > 50) {
+    undoStack.value.shift();
   }
-  ctx.restore();
+  redoStack.value = [];
+};
+
+const applyPatternGridChange = (newGrid: PatternCell[][]): void => {
+  patternGrid.value = newGrid;
+  refreshColorStats();
+};
+
+const createCell = (color: PerlerColor, code: string): PatternCell => ({
+  color: { ...color },
+  code
+});
+
+const updateSelectionCells = (selection: PendingSelection, updater: (cell: PatternCell) => PatternCell): PatternCell[][] => {
+  if (!patternGrid.value.length) return patternGrid.value;
+  const grid = clonePatternGrid(patternGrid.value);
+
+  if (selection.type === 'cell') {
+    const x = selection.x ?? 0;
+    const y = selection.y ?? 0;
+    if (grid[y] && grid[y][x]) {
+      grid[y][x] = updater(grid[y][x]);
+    }
+    return grid;
+  }
+
+  const x1 = Math.min(selection.x1 ?? 0, selection.x2 ?? 0);
+  const y1 = Math.min(selection.y1 ?? 0, selection.y2 ?? 0);
+  const x2 = Math.max(selection.x1 ?? 0, selection.x2 ?? 0);
+  const y2 = Math.max(selection.y1 ?? 0, selection.y2 ?? 0);
+
+  for (let y = y1; y <= y2; y++) {
+    for (let x = x1; x <= x2; x++) {
+      if (grid[y] && grid[y][x]) {
+        grid[y][x] = updater(grid[y][x]);
+      }
+    }
+  }
+
+  return grid;
+};
+
+const applyToolAction = (selection: PendingSelection): void => {
+  if (!selection || selectedTool.value === 'pan' || !patternGrid.value.length) return;
+  if (selectedTool.value === 'eyedropper') {
+    handleEyedropper(selection);
+    return;
+  }
+
+  const color = selectedTool.value === 'eraser' ? blankCellColor : selectedEditColor.value;
+  if (!color) return;
+  const code = selectedTool.value === 'eraser' ? '' : getBrandCode(color);
+
+  pushHistory();
+
+  if (selectedTool.value === 'fill') {
+    if (selection.type === 'cell') {
+      const x = selection.x ?? 0;
+      const y = selection.y ?? 0;
+      const nextGrid = clonePatternGrid(patternGrid.value);
+      applyPatternGridChange(fillConnectedRegion(nextGrid, x, y, color, code));
+      return;
+    }
+
+    applyPatternGridChange(updateSelectionCells(selection, () => createCell(color, code)));
+    return;
+  }
+
+  applyPatternGridChange(updateSelectionCells(selection, () => createCell(color, code)));
+};
+
+const handleFillAll = (): void => {
+  if (!selectedEditColor.value || !patternGrid.value.length) return;
+  pushHistory();
+
+  const code = getBrandCode(selectedEditColor.value);
+  const nextGrid = clonePatternGrid(patternGrid.value).map((row) =>
+    row.map(() => createCell(selectedEditColor.value as PerlerColor, code))
+  );
+
+  applyPatternGridChange(nextGrid);
+};
+
+const handleEyedropper = (selection: PendingSelection): void => {
+  if (!patternGrid.value.length) return;
+  const x = selection.x ?? selection.x1 ?? 0;
+  const y = selection.y ?? selection.y1 ?? 0;
+  const cell = patternGrid.value[y]?.[x];
+  if (!cell) return;
+  selectedEditColor.value = cell.color;
+};
+
+const handleUndo = (): void => {
+  if (!undoStack.value.length) return;
+  redoStack.value.push(clonePatternGrid(patternGrid.value));
+  const previous = undoStack.value.pop();
+  if (previous) {
+    patternGrid.value = previous;
+    refreshColorStats();
+  }
+};
+
+const handleRedo = (): void => {
+  if (!redoStack.value.length) return;
+  undoStack.value.push(clonePatternGrid(patternGrid.value));
+  const next = redoStack.value.pop();
+  if (next) {
+    patternGrid.value = next;
+    refreshColorStats();
+  }
 };
 
 const setPendingSelection = (selection: PendingSelection) => {
-  if (!editMode.value) return;
-  pendingSelection.value = selection;
-  renderPatternGrid();
-};
-
-const confirmPendingEdit = (): void => {
-  if (!pendingSelection.value || !selectedEditColor.value) return;
-
-  const pendingCells = getPendingCellsUtil(pendingSelection.value, gridWidth.value, gridHeight.value);
-  const color = selectedEditColor.value;
-  pendingCells.forEach(({ x, y }) => {
-    updateCellColor(x, y, color);
-  });
-
-  pendingSelection.value = null;
-  renderPatternGrid();
-  refreshColorStats();
-};
-
-const cancelPendingEdit = (): void => {
-  pendingSelection.value = null;
-  renderPatternGrid();
-};
-
-const fillAllWithSelectedColor = (): void => {
-  const color = selectedEditColor.value;
-  if (!color) return;
-  patternGrid.value.forEach((row) => {
-    row.forEach((cell) => {
-      cell.color = color;
-      cell.code = color.info?.[selectedBrand.value] || cell.code || '';
-    });
-  });
-  pendingSelection.value = null;
-  renderPatternGrid();
-  refreshColorStats();
-};
-
-const selectEditColor = (color: PerlerColor) => {
-  selectedEditColor.value = color;
-  if (pendingSelection.value) {
-    renderPatternGrid();
+  if (!isEditActive.value) return;
+  if (selectedTool.value === 'eyedropper') {
+    handleEyedropper(selection);
+    return;
   }
+  applyToolAction(selection);
 };
+
 
 // 生成拼豆图纸
 const generatePattern = (): void => {
@@ -534,7 +590,6 @@ const generatePatternData = (): void => {
 
     refreshColorStats();
     selectedEditColor.value = selectedEditColor.value || patternPalette.value[0]?.color || null;
-    renderPatternGrid();
     infoText.value = `拼豆图纸已生成: ${gridWidth.value}x${gridHeight.value} 网格, ${colorCount.value} 种颜色`;
   };
   img.src = originalImageUrl.value;
@@ -825,5 +880,13 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+.pattern-editor-panel {
+  margin-top: 16px;
+}
+
+.pattern-editor-panel :deep(.palette-card) {
+  border-radius: 12px;
 }
 </style>

@@ -103,6 +103,17 @@ export const buildPatternPalette = (perlerColors: PerlerColor[], patternGrid: Pa
     });
 };
 
+export const buildBrandPalette = (perlerColors: PerlerColor[], brand: string): PaletteItem[] => {
+  return perlerColors
+    .filter((color) => color.info && color.info[brand])
+    .map((color) => ({
+      code: color.info![brand],
+      color,
+      count: 0
+    }))
+    .sort((a, b) => a.code.localeCompare(b.code));
+};
+
 /**
  * 构建拼豆颜色统计
  * @param patternGrid - 拼豆图纸数据（二维数组）

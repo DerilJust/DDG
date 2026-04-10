@@ -12,18 +12,21 @@
         </div>
 
         <div class="palette-description">
-            请选择当前品牌颜色，切换“点击修改”或“框选修改”，修改后点击确认才会应用。
+            请选择当前颜色后直接点击或拖动绘制，Ctrl+滚轮缩放画布，滚轮上下移动视图。
         </div>
 
-        <div class="mode-panel">
-            <el-button type="text" class="mode-button" :class="{ active: localEditType === 'click' }" @click="selectMode('click')">
-                <el-icon><Brush /></el-icon>
-                <span>点击修改</span>
-            </el-button>
-            <el-button type="text" class="mode-button" :class="{ active: localEditType === 'area' }" @click="selectMode('area')">
-                <el-icon><Crop /></el-icon>
-                <span>框选修改</span>
-            </el-button>
+        <div v-if="activeColorHex" class="current-color-panel">
+            <div class="current-color-swatch" :style="{ backgroundColor: activeColorHex }"></div>
+            <div class="current-color-label">当前颜色: {{ activeColorHex }}</div>
+        </div>
+
+
+        <div class="tool-panel">
+            <el-button size="small" :type="localSelectedTool === 'brush' ? 'primary' : 'default'" @click="selectTool('brush')">画笔</el-button>
+            <el-button size="small" :type="localSelectedTool === 'fill' ? 'primary' : 'default'" @click="selectTool('fill')">填充</el-button>
+            <el-button size="small" :type="localSelectedTool === 'eraser' ? 'primary' : 'default'" @click="selectTool('eraser')">橡皮</el-button>
+            <el-button size="small" :type="localSelectedTool === 'eyedropper' ? 'primary' : 'default'" @click="selectTool('eyedropper')">吸管</el-button>
+            <el-button size="small" :type="localSelectedTool === 'pan' ? 'primary' : 'default'" @click="selectTool('pan')">手形</el-button>
         </div>
 
         <div v-if="palette.length" class="palette-grid">
@@ -40,15 +43,14 @@
             先生成图纸后即可选择可编辑颜色。
         </div>
 
+        <div class="tool-footer">
+            <el-button size="small" @click="undo" :disabled="!canUndo">撤销</el-button>
+            <el-button size="small" @click="redo" :disabled="!canRedo">重做</el-button>
+        </div>
+
         <div class="palette-footer">
             <el-button type="primary" size="small" @click="fillAll" :disabled="!activeColorHex">
                 全部填充选中色
-            </el-button>
-            <el-button type="success" size="small" @click="confirmEdit" :disabled="!hasSelection || !hasPendingColor">
-                确认应用修改
-            </el-button>
-            <el-button type="danger" size="small" @click="cancelEdit" :disabled="!hasSelection">
-                取消修改
             </el-button>
         </div>
     </el-card>
@@ -57,7 +59,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { PropType } from 'vue';
-import { Brush, Crop } from '@element-plus/icons-vue';
+import { Brush } from '@element-plus/icons-vue';
 import type { PerlerColor, PaletteItem, ColorInfo } from '../utils/patternUtils';
 
 const props = defineProps({
@@ -73,33 +75,33 @@ const props = defineProps({
         type: Boolean,
         default: false
     },
-    editType: {
-        type: String as PropType<'click' | 'area'>,
-        default: 'click'
+    selectedTool: {
+        type: String as PropType<'brush' | 'fill' | 'pan' | 'eraser' | 'eyedropper'>,
+        default: 'brush'
     },
-    hasSelection: {
+    canUndo: {
         type: Boolean,
         default: false
     },
-    hasPendingColor: {
+    canRedo: {
         type: Boolean,
         default: false
     }
 });
-const emit = defineEmits(['select', 'fill-all', 'update:editMode', 'update:editType', 'confirm-edit', 'cancel-edit']);
+const emit = defineEmits(['select', 'fill-all', 'update:editMode', 'update:selectedTool', 'undo', 'redo']);
 
 const activeColorHex = computed<string>(() => props.activeColor?.hex || '');
 const localEditMode = computed<boolean>({
     get: () => props.editMode,
     set: (val) => emit('update:editMode', val)
 });
-const localEditType = computed<'click' | 'area'>({
-    get: () => props.editType,
-    set: (val) => emit('update:editType', val)
+const localSelectedTool = computed<'brush' | 'fill' | 'pan' | 'eraser' | 'eyedropper'>({
+    get: () => props.selectedTool,
+    set: (val) => emit('update:selectedTool', val)
 });
 
-const selectMode = (mode: 'click' | 'area'): void => {
-    localEditType.value = mode;
+const selectTool = (tool: 'brush' | 'fill' | 'pan' | 'eraser' | 'eyedropper'): void => {
+    localSelectedTool.value = tool;
 };
 
 const selectColor = (color: PerlerColor): void => {
@@ -110,12 +112,12 @@ const fillAll = (): void => {
     emit('fill-all');
 };
 
-const confirmEdit = (): void => {
-    emit('confirm-edit');
+const undo = (): void => {
+    emit('undo');
 };
 
-const cancelEdit = (): void => {
-    emit('cancel-edit');
+const redo = (): void => {
+    emit('redo');
 };
 </script>
 
@@ -239,5 +241,42 @@ const cancelEdit = (): void => {
 
 .palette-footer {
     padding: 16px 20px 20px;
+}
+
+.current-color-panel {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: #fff;
+    border-bottom: 1px solid #e8edf3;
+}
+
+.current-color-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.current-color-label {
+    color: #303133;
+    font-weight: 600;
+}
+
+.tool-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 16px 20px;
+    background: #ffffff;
+    border-bottom: 1px solid #e8edf3;
+}
+
+.tool-footer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px 0;
 }
 </style>

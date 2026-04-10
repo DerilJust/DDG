@@ -28,8 +28,8 @@ export const DEFAULT_RENDER_OPTIONS: RenderOptions = {
     major: '#333',
     minor: '#ddd'
   },
-  majorGridLineWidth: 1.5,
-  minorGridLineWidth: 0.5
+  majorGridLineWidth: 2,
+  minorGridLineWidth: 1
 };
 
 export function getContrastColor(r: number, g: number, b: number): string {
@@ -159,30 +159,10 @@ export function drawPatternToCanvas(
       const cell = patternGrid[y]?.[x];
       if (!cell) continue;
 
-      const { cellX, cellY, isMajorGridLineX, isMajorGridLineY } = calculateCellPosition(x, y, cellSize, axisMargin, gridLineInterval);
+      const { cellX, cellY } = calculateCellPosition(x, y, cellSize, axisMargin, gridLineInterval);
 
       ctx.fillStyle = `rgb(${cell.color.r}, ${cell.color.g}, ${cell.color.b})`;
       ctx.fillRect(cellX, cellY, cellSize, cellSize);
-
-      if (isMajorGridLineX || isMajorGridLineY) {
-        ctx.beginPath();
-        ctx.strokeStyle = gridLineColor.major;
-        ctx.lineWidth = majorGridLineWidth;
-        if (isMajorGridLineX) {
-          ctx.moveTo(cellX + cellSize, cellY);
-          ctx.lineTo(cellX + cellSize, cellY + cellSize);
-          ctx.stroke();
-        }
-        if (isMajorGridLineY) {
-          ctx.moveTo(cellX, cellY + cellSize);
-          ctx.lineTo(cellX + cellSize, cellY + cellSize);
-          ctx.stroke();
-        }
-      } else {
-        ctx.strokeStyle = gridLineColor.minor;
-        ctx.lineWidth = minorGridLineWidth;
-        ctx.strokeRect(cellX, cellY, cellSize, cellSize);
-      }
 
       if (showNumbers && cellSize >= 20 && cell.code) {
         const colorCode = cell.code;
@@ -209,6 +189,49 @@ export function drawPatternToCanvas(
       }
     }
   }
+  const offset = axisMargin;
+
+  // 画所有的细线
+  ctx.beginPath();
+  ctx.strokeStyle = gridLineColor.minor;
+  ctx.lineWidth = minorGridLineWidth;
+
+  // 画垂直方向的细线
+  for (let i = 0; i <= gridWidth; i++) {
+    if (i % 5 !== 0) { // 不是 5 的倍数才画细线
+      ctx.moveTo(i * cellSize + offset, 0);
+      ctx.lineTo(i * cellSize + offset, canvas.height);
+    }
+  }
+  // 画水平方向的细线
+  for (let j = 0; j <= gridHeight; j++) {
+    if (j % 5 !== 0) { // 不是 5 的倍数才画细线
+      ctx.moveTo(0, j * cellSize + offset);
+      ctx.lineTo(canvas.width, j * cellSize + offset);
+    }
+  }
+  ctx.stroke();
+
+  // 画所有的粗线
+  ctx.beginPath();
+  ctx.strokeStyle = gridLineColor.major;
+  ctx.lineWidth = majorGridLineWidth;
+
+  // 画垂直方向的粗线
+  for (let i = 0; i <= gridWidth; i++) {
+    if (i % 5 === 0) { // 是 5 的倍数，画粗线
+      ctx.moveTo(i * cellSize + offset, 0);
+      ctx.lineTo(i * cellSize + offset, canvas.height);
+    }
+  }
+  // 画水平方向的粗线
+  for (let j = 0; j <= gridHeight; j++) {
+    if (j % 5 === 0) { // 是 5 的倍数，画粗线
+      ctx.moveTo(0, j * cellSize + offset);
+      ctx.lineTo(canvas.width, j * cellSize + offset);
+    }
+  }
+  ctx.stroke(); // 一次性画出所有粗线
 
   if (showNumbers) {
     drawAxisLabels(ctx, canvas, gridWidth, gridHeight, cellSize, axisMargin);
