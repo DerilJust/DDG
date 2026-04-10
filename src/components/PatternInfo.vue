@@ -44,8 +44,22 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import type { PropType } from 'vue';
 import { InfoFilled, Message, DataAnalysis } from '@element-plus/icons-vue';
+
+interface ColorInfo {
+  r: number;
+  g: number;
+  b: number;
+  hex: string;
+}
+
+interface ColorStat {
+  code: string;
+  color: ColorInfo;
+  count: number;
+}
 
 // 定义 props
 const props = defineProps({
@@ -54,7 +68,7 @@ const props = defineProps({
     default: '请上传图片并生成图纸'
   },
   colorStats: {
-    type: Array,
+    type: Array as PropType<ColorStat[]>,
     default: () => []
   }
 });

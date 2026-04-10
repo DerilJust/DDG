@@ -9,14 +9,14 @@
                     width: cropRect.width + 'px',
                     height: cropRect.height + 'px'
                 }">
-                    <div class="crop-handle top-left" @mousedown="startResize('tl', $event)"></div>
-                    <div class="crop-handle top-right" @mousedown="startResize('tr', $event)"></div>
-                    <div class="crop-handle bottom-left" @mousedown="startResize('bl', $event)"></div>
-                    <div class="crop-handle bottom-right" @mousedown="startResize('br', $event)"></div>
-                    <div class="crop-handle top" @mousedown="startResize('t', $event)"></div>
-                    <div class="crop-handle bottom" @mousedown="startResize('b', $event)"></div>
-                    <div class="crop-handle left" @mousedown="startResize('l', $event)"></div>
-                    <div class="crop-handle right" @mousedown="startResize('r', $event)"></div>
+                    <div class="crop-handle top-left" @pointerdown="startResize('tl', $event)"></div>
+                    <div class="crop-handle top-right" @pointerdown="startResize('tr', $event)"></div>
+                    <div class="crop-handle bottom-left" @pointerdown="startResize('bl', $event)"></div>
+                    <div class="crop-handle bottom-right" @pointerdown="startResize('br', $event)"></div>
+                    <div class="crop-handle top" @pointerdown="startResize('t', $event)"></div>
+                    <div class="crop-handle bottom" @pointerdown="startResize('b', $event)"></div>
+                    <div class="crop-handle left" @pointerdown="startResize('l', $event)"></div>
+                    <div class="crop-handle right" @pointerdown="startResize('r', $event)"></div>
                 </div>
             </div>
 
@@ -36,8 +36,25 @@
     </el-dialog>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import type { PropType } from 'vue';
+
+interface ImageData {
+    offsetX: number;
+    offsetY: number;
+    displayWidth: number;
+    displayHeight: number;
+    displayScaleX: number;
+    displayScaleY: number;
+    image: HTMLImageElement;
+}
+
+interface CroppedResult {
+    image: HTMLImageElement;
+    dataUrl: string;
+    file: File;
+}
 
 const props = defineProps({
     visible: {
@@ -45,22 +62,31 @@ const props = defineProps({
         default: false
     },
     imageData: {
-        type: Object,
+        type: Object as PropType<ImageData | null>,
         default: null
     }
 });
 const emit = defineEmits(['update:visible', 'upload']);
 
-const dialogVisible = computed({
+const dialogVisible = computed<boolean>({
     get: () => props.visible,
     set: (value) => emit('update:visible', value)
 });
 
-const cropperCanvas = ref(null);
-const canvasContext = ref(null);
-const localImageData = ref(null);
-const zoomLevel = ref(100);
-const cropRect = ref({
+const cropperCanvas = ref<HTMLCanvasElement | null>(null);
+const canvasContext = ref<CanvasRenderingContext2D | null>(null);
+const localImageData = ref<ImageData | null>(null);
+const zoomLevel = ref<number>(100);
+const cropRect = ref<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    visible: boolean;
+    dragging: boolean;
+    resizing: boolean;
+    resizeDirection: string;
+}>({
     x: 50,
     y: 50,
     width: 200,
@@ -70,9 +96,9 @@ const cropRect = ref({
     resizing: false,
     resizeDirection: ''
 });
-const mouseStartPos = ref({ x: 0, y: 0 });
-const originalCropRect = ref({ x: 0, y: 0, width: 0, height: 0 });
-const canvasSize = ref({ width: 0, height: 0 });
+const mouseStartPos = ref<{ x: number; y: number }>({ x: 0, y: 0 });
+const originalCropRect = ref<{ x: number; y: number; width: number; height: number }>({ x: 0, y: 0, width: 0, height: 0 });
+const canvasSize = ref<{ width: number; height: number }>({ width: 0, height: 0 });
 
 onMounted(() => {
     window.addEventListener('pointermove', handlePointerMove);
@@ -104,7 +130,7 @@ watch(
     }
 );
 
-const initCanvas = () => {
+const initCanvas = (): void => {
     if (!cropperCanvas.value) return;
 
     const width = cropperCanvas.value.clientWidth;
@@ -115,10 +141,12 @@ const initCanvas = () => {
     canvasSize.value = { width, height };
 
     canvasContext.value = cropperCanvas.value.getContext('2d');
-    canvasContext.value.setTransform(1, 0, 0, 1, 0, 0);
+    if (canvasContext.value) {
+        canvasContext.value.setTransform(1, 0, 0, 1, 0, 0);
+    }
 };
 
-const getCanvasPointerPos = (e) => {
+const getCanvasPointerPos = (e: PointerEvent): { x: number; y: number } => {
     if (!cropperCanvas.value) return { x: 0, y: 0 };
 
     const rect = cropperCanvas.value.getBoundingClientRect();
@@ -131,8 +159,8 @@ const getCanvasPointerPos = (e) => {
     };
 };
 
-const drawImage = () => {
-    if (!localImageData.value || !canvasContext.value) return;
+const drawImage = (): void => {
+    if (!localImageData.value || !canvasContext.value || !cropperCanvas.value) return;
 
     const canvas = cropperCanvas.value;
     const ctx = canvasContext.value;
@@ -142,8 +170,8 @@ const drawImage = () => {
 
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
-    const imgWidth = img.width;
-    const imgHeight = img.height;
+    const imgWidth = img.image.width;
+    const imgHeight = img.image.height;
     const scale = zoomLevel.value / 100;
     let displayWidth = imgWidth * scale;
     let displayHeight = imgHeight * scale;
@@ -159,7 +187,7 @@ const drawImage = () => {
     const offsetX = (canvasWidth - displayWidth) / 2;
     const offsetY = (canvasHeight - displayHeight) / 2;
 
-    ctx.drawImage(img, offsetX, offsetY, displayWidth, displayHeight);
+    ctx.drawImage(img.image, offsetX, offsetY, displayWidth, displayHeight);
 
     localImageData.value.offsetX = offsetX;
     localImageData.value.offsetY = offsetY;
@@ -169,7 +197,7 @@ const drawImage = () => {
     localImageData.value.displayScaleY = displayHeight / imgHeight;
 };
 
-const initCropRect = () => {
+const initCropRect = (): void => {
     if (!localImageData.value) return;
 
     const displayWidth = localImageData.value.displayWidth;
@@ -190,7 +218,7 @@ const initCropRect = () => {
     };
 };
 
-const startDrag = (e) => {
+const startDrag = (e: PointerEvent) => {
     if (!cropRect.value.visible) return;
 
     e.preventDefault();
@@ -209,7 +237,7 @@ const startDrag = (e) => {
     }
 };
 
-const handlePointerMove = (e) => {
+const handlePointerMove = (e: PointerEvent) => {
     if (!cropRect.value.visible) return;
 
     const { x, y } = getCanvasPointerPos(e);
@@ -226,7 +254,7 @@ const handlePointerMove = (e) => {
     }
 };
 
-const handlePointerUp = (e) => {
+const handlePointerUp = (e: PointerEvent) => {
     if (cropRect.value.dragging || cropRect.value.resizing) {
         cropRect.value.dragging = false;
         cropRect.value.resizing = false;
@@ -237,12 +265,7 @@ const handlePointerUp = (e) => {
     }
 };
 
-const endDrag = () => {
-    cropRect.value.dragging = false;
-    cropRect.value.resizing = false;
-};
-
-const startResize = (direction, e) => {
+const startResize = (direction: string, e: PointerEvent) => {
     if (!cropRect.value.visible) return;
 
     e.stopPropagation();
@@ -256,7 +279,7 @@ const startResize = (direction, e) => {
     originalCropRect.value = { ...crop };
 };
 
-const handleResize = (mouseX, mouseY) => {
+const handleResize = (mouseX: number, mouseY: number) => {
     const crop = cropRect.value;
     const original = originalCropRect.value;
     const direction = crop.resizeDirection;
@@ -299,7 +322,7 @@ const handleResize = (mouseX, mouseY) => {
     originalCropRect.value = { ...cropRect.value };
 };
 
-const constrainCropRect = () => {
+const constrainCropRect = (): void => {
     if (!localImageData.value) return;
 
     const offsetX = localImageData.value.offsetX;
@@ -319,7 +342,7 @@ const constrainCropRect = () => {
     crop.height = Math.max(20, crop.height);
 };
 
-const cropCanvasImage = (img, crop) => {
+const cropCanvasImage = (img: ImageData, crop: any): Promise<CroppedResult> => {
     return new Promise((resolve, reject) => {
         const sourceX = (crop.x - img.offsetX) / img.displayScaleX;
         const sourceY = (crop.y - img.offsetY) / img.displayScaleY;
@@ -330,8 +353,12 @@ const cropCanvasImage = (img, crop) => {
         tempCanvas.width = Math.max(1, Math.round(sourceWidth));
         tempCanvas.height = Math.max(1, Math.round(sourceHeight));
         const tempCtx = tempCanvas.getContext('2d');
+        if (!tempCtx) {
+            reject(new Error('无法获取Canvas上下文'));
+            return;
+        }
 
-        tempCtx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, tempCanvas.width, tempCanvas.height);
+        tempCtx.drawImage(img.image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, tempCanvas.width, tempCanvas.height);
         tempCanvas.toBlob((blob) => {
             if (!blob) {
                 reject(new Error('裁剪失败'));
@@ -358,7 +385,10 @@ const applyCrop = async () => {
 
     try {
         const cropped = await cropCanvasImage(localImageData.value, cropRect.value);
-        localImageData.value = cropped.image;
+        localImageData.value = {
+            ...localImageData.value,
+            image: cropped.image
+        };
         zoomLevel.value = 100;
 
         await nextTick();
@@ -371,7 +401,7 @@ const applyCrop = async () => {
     }
 };
 
-const cancelCrop = () => {
+const cancelCrop = (): void => {
     dialogVisible.value = false;
     cropRect.value.visible = false;
     zoomLevel.value = 100;

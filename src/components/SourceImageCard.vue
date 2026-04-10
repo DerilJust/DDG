@@ -29,7 +29,7 @@
     </el-card>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue';
 import { PictureFilled, ArrowDown, ArrowUp } from '@element-plus/icons-vue';
 
@@ -40,9 +40,9 @@ const props = defineProps({
     }
 });
 
-const collapsed = ref(false);
+const collapsed = ref<boolean>(false);
 
-const toggleCollapsed = () => {
+const toggleCollapsed = (): void => {
     collapsed.value = !collapsed.value;
 };
 </script>

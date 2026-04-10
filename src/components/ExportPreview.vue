@@ -1,53 +1,59 @@
 <template>
   <div class="export-preview-section">
-    <!-- 展开/收起按钮 -->
-    <div class="export-header" @click="isExpanded = !isExpanded">
-      <div class="header-content">
-        <el-icon class="header-icon">
-          <component :is="isExpanded ? 'CaretBottom' : 'CaretRight'" />
-        </el-icon>
-        <span class="title">导出预览</span>
-        <el-tag v-if="colorStats.length" type="info" size="small">{{ colorStats.length }}种颜色</el-tag>
-      </div>
-    </div>
-
-    <!-- 导出预览内容 -->
-    <div v-if="isExpanded" class="export-content">
-      <el-card class="preview-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            <span>预览图</span>
-            <el-button type="primary" size="small" @click="downloadExport">
-              <el-icon><Download /></el-icon>
-              下载预览
-            </el-button>
-          </div>
-        </template>
-
-        <!-- 预览Canvas -->
-        <div class="preview-canvas-wrapper">
-          <canvas ref="previewCanvas" class="preview-canvas"></canvas>
+    <el-card class="preview-card" shadow="hover">
+      <template #header>
+        <div class="card-header">
+          <el-icon class="header-icon"><Download /></el-icon>
+          <span>导出预览</span>
+          <el-button type="primary" size="small" @click="downloadExport">
+            <el-icon><Download /></el-icon>
+            下载预览
+          </el-button>
         </div>
-      </el-card>
-    </div>
+      </template>
+
+      <!-- 预览Canvas -->
+      <div class="preview-canvas-wrapper">
+        <canvas ref="previewCanvas" class="preview-canvas"></canvas>
+      </div>
+    </el-card>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue';
-import { CaretRight, CaretBottom, Download } from '@element-plus/icons-vue';
+import type { PropType } from 'vue';
+import { Download } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 
-// ============ Props定义 ============
+interface ColorInfo {
+    r: number;
+    g: number;
+    b: number;
+    hex: string;
+}
+
+interface ColorStat {
+    code: string;
+    color: ColorInfo;
+    count: number;
+}
+
+interface PatternCell {
+    code: string;
+    color: ColorInfo;
+}
+
 // 接收要导出的配置信息
 const props = defineProps({
   // 拼豆颜色数组
   colorStats: {
-    type: Array,
+    type: Array as PropType<ColorStat[]>,
     default: () => []
   },
   // 拼豆图纸数据
   patternGrid: {
-    type: Array,
+    type: Array as PropType<PatternCell[][]>,
     default: () => []
   },
   // 显示数字标签
@@ -72,25 +78,20 @@ const props = defineProps({
   }
 });
 
-// ============ 状态管理 ============
-
-// 是否展开预览
-const isExpanded = ref(false);
-
 // Canvas引用
-const previewCanvas = ref(null);
+const previewCanvas = ref<HTMLCanvasElement | null>(null);
 
 // ============ 事件处理 ============
 
 // 获取对比色（用于文字）
-const getContrastColor = (r, g, b) => {
+const getContrastColor = (r: number, g: number, b: number): string => {
   // 使用亮度公式计算背景亮度
   const brightness = (r * 299 + g * 587 + b * 114) / 1000;
   return brightness > 128 ? '#000000' : '#ffffff';
 };
 
 // 生成导出预览图
-const generatePreview = () => {
+const generatePreview = (): void => {
   if (!previewCanvas.value || !props.patternGrid.length) return;
 
   // 配置参数
@@ -101,6 +102,8 @@ const generatePreview = () => {
   // 创建临时canvas用于绘制图纸
   const tempCanvas = document.createElement('canvas');
   const tempCtx = tempCanvas.getContext('2d');
+  if (!tempCtx) return; // 如果无法获取2D上下文，直接返回
+  
   tempCanvas.width = props.gridWidth * cellSize + axisMargin * 2;
   tempCanvas.height = props.gridHeight * cellSize + axisMargin * 2;
 
@@ -138,16 +141,6 @@ const generatePreview = () => {
         }
         const textX = cellX + cellSize / 2;
         const textY = cellY + cellSize / 2;
-        const padding = 4;
-
-        // 绘制文字背景
-        tempCtx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-        tempCtx.fillRect(
-          textX - textWidth / 2 - padding,
-          textY - fontSize / 2 - padding / 2,
-          textWidth + padding * 2,
-          fontSize + padding
-        );
 
         // 绘制文字（带描边和填充）
         tempCtx.textAlign = 'center';
@@ -219,11 +212,14 @@ const generatePreview = () => {
   // 计算统计信息区域的尺寸
   const columns = 3;
   const rowHeight = 48;
-  const statsHeight = Math.ceil(props.colorStats.length / columns) * rowHeight + 80;
+  const headerHeight = 120; // 为统计信息标题和汇总信息留出空间
+  const statsHeight = Math.ceil(props.colorStats.length / columns) * rowHeight + headerHeight;
 
   // 调整canvas大小以容纳统计信息
   const finalCanvas = document.createElement('canvas');
   const finalCtx = finalCanvas.getContext('2d');
+  if (!finalCtx) return; // 如果无法获取2D上下文，直接返回
+
   finalCanvas.width = tempCanvas.width;
   finalCanvas.height = tempCanvas.height + statsHeight;
 
@@ -234,11 +230,13 @@ const generatePreview = () => {
   const originalHeight = tempCanvas.height;
   finalCtx.fillStyle = '#f9fafb';
   finalCtx.fillRect(0, originalHeight, finalCanvas.width, statsHeight);
+
+  // 绘制统计信息标题区域
   finalCtx.fillStyle = '#fff';
-  finalCtx.fillRect(12, originalHeight + 12, finalCanvas.width - 24, statsHeight - 24);
+  finalCtx.fillRect(12, originalHeight + 12, finalCanvas.width - 24, headerHeight - 24);
   finalCtx.strokeStyle = '#e6e9ed';
   finalCtx.lineWidth = 1;
-  finalCtx.strokeRect(12, originalHeight + 12, finalCanvas.width - 24, statsHeight - 24);
+  finalCtx.strokeRect(12, originalHeight + 12, finalCanvas.width - 24, headerHeight - 24);
 
   // 绘制统计信息标题
   finalCtx.fillStyle = '#333';
@@ -246,41 +244,97 @@ const generatePreview = () => {
   finalCtx.textAlign = 'left';
   finalCtx.fillText('拼豆数量统计', 24, originalHeight + 38);
 
-  // 绘制统计信息卡片
-  const columnWidth = (finalCanvas.width - 48) / columns;
+  // 计算统计数据
+  const totalCount = props.colorStats.reduce((sum, stat) => sum + stat.count, 0);
+  const colorCount = props.colorStats.length;
+
+  // 绘制汇总信息
+  finalCtx.fillStyle = '#666';
+  finalCtx.font = '14px Arial';
+  finalCtx.fillText(`品牌: ${props.selectedBrand}`, 24, originalHeight + 58);
+  finalCtx.fillText(`颜色数量: ${colorCount} 种`, 24, originalHeight + 78);
+  finalCtx.fillText(`总数量: ${totalCount} 颗`, 24, originalHeight + 98);
+
+  // 绘制表格头部
+  const tableStartY = originalHeight + headerHeight - 12;
+  finalCtx.fillStyle = '#f8f9fa';
+  finalCtx.fillRect(12, tableStartY, finalCanvas.width - 24, 32);
+  finalCtx.strokeStyle = '#dee2e6';
+  finalCtx.lineWidth = 1;
+  finalCtx.strokeRect(12, tableStartY, finalCanvas.width - 24, 32);
+
+  // 绘制表头文字
+  finalCtx.fillStyle = '#303133';
+  finalCtx.font = 'bold 14px Arial';
+  finalCtx.textAlign = 'left';
+  finalCtx.fillText('颜色编号', 32, tableStartY + 22);
+  finalCtx.textAlign = 'right';
+  finalCtx.fillText('数量', finalCanvas.width - 32, tableStartY + 22);
+
+  // 绘制统计信息表格
+  const tableBodyStartY = tableStartY + 32;
+  const tableHeight = Math.ceil(props.colorStats.length / columns) * rowHeight;
+  finalCtx.fillStyle = '#fff';
+  finalCtx.fillRect(12, tableBodyStartY, finalCanvas.width - 24, tableHeight);
+  finalCtx.strokeStyle = '#dee2e6';
+  finalCtx.lineWidth = 1;
+  finalCtx.strokeRect(12, tableBodyStartY, finalCanvas.width - 24, tableHeight);
+
+  // 绘制表格行
   props.colorStats.forEach((stat, index) => {
     const row = Math.floor(index / columns);
     const col = index % columns;
-    const x = 24 + col * columnWidth;
-    const y = originalHeight + 60 + row * rowHeight;
+    const columnWidth = (finalCanvas.width - 24) / columns;
+    const x = 12 + col * columnWidth;
+    const y = tableBodyStartY + row * rowHeight;
 
-    // 卡片背景和边框
-    finalCtx.fillStyle = '#ffffff';
-    finalCtx.fillRect(x, y, columnWidth - 16, rowHeight - 12);
-    finalCtx.strokeStyle = '#e8edf3';
-    finalCtx.lineWidth = 1;
-    finalCtx.strokeRect(x, y, columnWidth - 16, rowHeight - 12);
+    // 绘制行边框
+    if (row > 0 || col > 0) {
+      finalCtx.strokeStyle = '#dee2e6';
+      finalCtx.lineWidth = 1;
+      finalCtx.beginPath();
+      finalCtx.moveTo(x, y);
+      finalCtx.lineTo(x + columnWidth, y);
+      if (col === 0) {
+        finalCtx.moveTo(x, y);
+        finalCtx.lineTo(x, y + rowHeight);
+      }
+      finalCtx.stroke();
+    }
 
-    // 颜色块
+    // 绘制颜色块和编号
     finalCtx.fillStyle = `rgb(${stat.color.r}, ${stat.color.g}, ${stat.color.b})`;
-    finalCtx.fillRect(x + 10, y + 10, 24, 24);
+    finalCtx.fillRect(x + 8, y + 8, 24, 24);
+    finalCtx.strokeStyle = '#e4e7ed';
+    finalCtx.lineWidth = 1;
+    finalCtx.strokeRect(x + 8, y + 8, 24, 24);
 
-    // 文字：编号与数量
+    // 绘制编号
     finalCtx.fillStyle = '#333';
     finalCtx.font = '14px Arial';
     finalCtx.textAlign = 'left';
-    finalCtx.fillText(`${stat.code}  ${stat.count} 颗`, x + 40, y + 28);
+    finalCtx.fillText(stat.code, x + 40, y + 22);
+
+    // 绘制数量标签
+    finalCtx.fillStyle = '#409EFF';
+    finalCtx.font = 'bold 12px Arial';
+    finalCtx.textAlign = 'right';
+    finalCtx.fillText(`${stat.count} 颗`, x + columnWidth - 8, y + 22);
   });
 
   // 显示预览canvas
-  previewCanvas.value.width = finalCanvas.width;
-  previewCanvas.value.height = finalCanvas.height;
-  const ctx = previewCanvas.value.getContext('2d');
-  ctx.drawImage(finalCanvas, 0, 0);
+  if (previewCanvas.value) {
+    previewCanvas.value.width = finalCanvas.width;
+    previewCanvas.value.height = finalCanvas.height;
+    const ctx = previewCanvas.value.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(finalCanvas, 0, 0);
+    }
+  }
 };
 
 // 下载导出图
-const downloadExport = () => {
+const downloadExport = (): void => {
   if (!previewCanvas.value || previewCanvas.value.width === 0) {
     ElMessage.warning('请先生成拼豆图纸');
     return;
@@ -294,17 +348,8 @@ const downloadExport = () => {
 
 // 监听相关属性变化，重新生成预览
 watch([() => props.patternGrid, () => props.showNumbers, () => props.selectedBrand, () => props.colorStats], () => {
-  if (isExpanded.value) {
-    generatePreview();
-  }
-}, { deep: true });
-
-// 监听展开状态，展开时生成预览
-watch(isExpanded, (value) => {
-  if (value) {
-    generatePreview();
-  }
-});
+  generatePreview();
+}, { deep: true, immediate: true });
 
 // 暴露接口供父组件使用
 defineExpose({
@@ -316,56 +361,18 @@ defineExpose({
 <style scoped>
 .export-preview-section {
   width: 100%;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #e4e7ed;
-}
-
-.export-header {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  background: linear-gradient(135deg, #f6f8fa 0%, #e9ecef 100%);
-  border-bottom: 1px solid #e4e7ed;
-  cursor: pointer;
-  user-select: none;
-  transition: background-color 0.3s ease;
-}
-
-.export-header:hover {
-  background: linear-gradient(135deg, #f0f2f5 0%, #e0e3e8 100%);
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-}
-
-.header-icon {
-  font-size: 16px;
-  color: #409EFF;
-  transition: transform 0.3s ease;
-}
-
-.title {
-  font-weight: bold;
-  color: #303133;
-  flex: 1;
-}
-
-.export-content {
-  padding: 12px;
-  background: white;
-  min-height: 200px;
-  max-height: 600px;
-  overflow-y: auto;
 }
 
 .preview-card {
   width: 100%;
-  border-radius: 8px;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.preview-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.15);
 }
 
 .card-header {
@@ -373,24 +380,32 @@ defineExpose({
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f6f8fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.header-icon {
+  font-size: 18px;
+  color: #409EFF;
 }
 
 .preview-canvas-wrapper {
   width: 100%;
-  max-height: 500px;
+  max-height: 600px;
   overflow: auto;
   background: linear-gradient(135deg, #f0f2f5 0%, #e6e8eb 100%);
-  border-radius: 4px;
+  border-radius: 0 0 8px 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px;
+  padding: 16px;
 }
 
 .preview-canvas {
   max-width: 100%;
   height: auto;
   border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.15);
 }
 </style>

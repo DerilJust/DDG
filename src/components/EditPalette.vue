@@ -54,17 +54,19 @@
     </el-card>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
+import type { PropType } from 'vue';
 import { Brush, Crop } from '@element-plus/icons-vue';
+import type { PerlerColor, PaletteItem, ColorInfo } from '../utils/patternUtils';
 
 const props = defineProps({
     palette: {
-        type: Array,
+        type: Array as PropType<PaletteItem[]>,
         default: () => []
     },
     activeColor: {
-        type: Object,
+        type: Object as PropType<ColorInfo | null>,
         default: null
     },
     editMode: {
@@ -72,7 +74,7 @@ const props = defineProps({
         default: false
     },
     editType: {
-        type: String,
+        type: String as PropType<'click' | 'area'>,
         default: 'click'
     },
     hasSelection: {
@@ -86,33 +88,33 @@ const props = defineProps({
 });
 const emit = defineEmits(['select', 'fill-all', 'update:editMode', 'update:editType', 'confirm-edit', 'cancel-edit']);
 
-const activeColorHex = computed(() => props.activeColor?.hex || '');
-const localEditMode = computed({
+const activeColorHex = computed<string>(() => props.activeColor?.hex || '');
+const localEditMode = computed<boolean>({
     get: () => props.editMode,
     set: (val) => emit('update:editMode', val)
 });
-const localEditType = computed({
+const localEditType = computed<'click' | 'area'>({
     get: () => props.editType,
     set: (val) => emit('update:editType', val)
 });
 
-const selectMode = (mode) => {
+const selectMode = (mode: 'click' | 'area'): void => {
     localEditType.value = mode;
 };
 
-const selectColor = (color) => {
+const selectColor = (color: PerlerColor): void => {
     emit('select', color);
 };
 
-const fillAll = () => {
+const fillAll = (): void => {
     emit('fill-all');
 };
 
-const confirmEdit = () => {
+const confirmEdit = (): void => {
     emit('confirm-edit');
 };
 
-const cancelEdit = () => {
+const cancelEdit = (): void => {
     emit('cancel-edit');
 };
 </script>

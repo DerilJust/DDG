@@ -1,4 +1,4 @@
-type PerlerColor = {
+export type PerlerColor = {
   r: number;
   g: number;
   b: number;
@@ -6,22 +6,24 @@ type PerlerColor = {
   info?: Record<string, string>;
 };
 
-type PatternCell = {
+export type PatternCell = {
   color: PerlerColor;
   code: string;
 };
 
-type PaletteItem = {
+export type PaletteItem = {
   code: string;
   color: PerlerColor;
   count: number;
 };
 
-type ColorStat = {
+export type ColorStat = {
   color: PerlerColor;
   count: number;
   code: string;
 };
+
+export type ColorInfo = PerlerColor;
 
 export const gcd = (a: number, b: number): number => {
   return b === 0 ? a : gcd(b, a % b);

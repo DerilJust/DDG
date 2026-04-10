@@ -20,8 +20,8 @@
         </el-button>
       </div>
 
-      <div v-if="originalImageUrl" class="image-preview">
-        <el-image :src="originalImageUrl" fit="cover" class="preview-img" :preview-src-list="[originalImageUrl]">
+      <div v-if="previewUrl" class="image-preview">
+        <el-image :src="previewUrl" fit="cover" class="preview-img" :preview-src-list="[previewUrl]">
           <template #error>
             <div class="image-error">
               <el-icon class="error-icon">
@@ -36,7 +36,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue';
 import { UploadFilled, Check, Picture } from '@element-plus/icons-vue';
 
@@ -50,41 +50,46 @@ const props = defineProps({
 const emit = defineEmits(['image-uploaded', 'image-selected']);
 
 // 响应式数据
-const originalImage = ref(null);
-const previewUrl = ref(props.imageUrl);
+const originalImage = ref<File | null>(null);
+const previewUrl = ref<string>(props.imageUrl);
 
-watch(() => props.imageUrl, (value) => {
+watch(() => props.imageUrl, (value: string) => {
   previewUrl.value = value;
 });
 
 // 处理文件选择
-const handleFileChange = (file) => {
+const handleFileChange = (file: { raw: File }) => {
   originalImage.value = file.raw;
   const reader = new FileReader();
-  reader.onload = (e) => {
-    previewUrl.value = e.target.result;
+  reader.onload = (e: ProgressEvent<FileReader>) => {
+    if (e.target?.result && typeof e.target.result === 'string') {
+      previewUrl.value = e.target.result;
+    }
   };
   reader.readAsDataURL(file.raw);
 };
 
 // 显示裁剪器
-const showCropper = () => {
+const showCropper = (): void => {
   if (!originalImage.value) {
     return;
   }
 
   const reader = new FileReader();
-  reader.onload = (e) => {
-    previewUrl.value = e.target.result;
-    const img = new Image();
-    img.onload = () => {
-      emit('image-selected', {
-        imageData: img,
-        imageUrl: e.target.result,
-        originalFile: originalImage.value
-      });
-    };
-    img.src = e.target.result;
+  reader.onload = (e: ProgressEvent<FileReader>) => {
+    if (e.target?.result && typeof e.target.result === 'string') {
+      previewUrl.value = e.target.result;
+      const img = new Image();
+      const imageUrl = e.target.result;
+      img.onload = () => {
+        emit('image-selected', {
+          imageData: img,
+          imageUrl: imageUrl,
+          originalFile: originalImage.value
+        });
+      };
+      img.src = imageUrl;
+    }
   };
   reader.readAsDataURL(originalImage.value);
 };

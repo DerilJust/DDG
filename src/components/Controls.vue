@@ -116,7 +116,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue';
 import { MagicStick, Download, Setting } from '@element-plus/icons-vue';
 
@@ -134,38 +134,38 @@ const props = defineProps({
 const emit = defineEmits(['update:gridWidth', 'update:gridHeight', 'update:colorCount', 'update:brand', 'update:showNumbers', 'update:editMode', 'update:lockAspectRatio', 'generate', 'download']);
 
 // 响应式绑定
-const gridWidth = computed({
+const gridWidth = computed<number>({
   get: () => props.gridWidth,
   set: (val) => emit('update:gridWidth', val)
 });
-const gridHeight = computed({
+const gridHeight = computed<number>({
   get: () => props.gridHeight,
   set: (val) => emit('update:gridHeight', val)
 });
-const colorCount = computed({
+const colorCount = computed<number>({
   get: () => props.colorCount,
   set: (val) => emit('update:colorCount', val)
 });
-const selectedBrand = computed({
+const selectedBrand = computed<string>({
   get: () => props.brand,
   set: (val) => emit('update:brand', val)
 });
-const showNumbers = computed({
+const showNumbers = computed<boolean>({
   get: () => props.showNumbers,
   set: (val) => emit('update:showNumbers', val)
 });
-const editMode = computed({
+const editMode = computed<boolean>({
   get: () => props.editMode,
   set: (val) => emit('update:editMode', val)
 });
-const imageRatio = computed(() => props.imageRatio);
-const lockAspectRatio = computed({
+const imageRatio = computed<string>(() => props.imageRatio);
+const lockAspectRatio = computed<boolean>({
   get: () => props.lockAspectRatio,
   set: (val) => emit('update:lockAspectRatio', val)
 });
 
-const generatePattern = () => emit('generate');
-const downloadPattern = () => emit('download');
+const generatePattern = (): void => emit('generate');
+const downloadPattern = (): void => emit('download');
 
 </script>
 

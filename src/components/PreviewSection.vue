@@ -49,10 +49,33 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import type { PropType } from 'vue';
 import { Grid } from '@element-plus/icons-vue';
-import { normalizeSelection, clampPointToGrid } from '../utils/selectionUtils';
+
+interface Point {
+  x: number;
+  y: number;
+  inGrid?: boolean;
+}
+
+interface SelectionRect {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+interface PatternCell {
+  code: string;
+  color: {
+    r: number;
+    g: number;
+    b: number;
+    hex: string;
+  };
+}
 
 /**
  * ============ Props定义 ============
@@ -91,8 +114,13 @@ const props = defineProps({
   },
   /** 编辑类型：'click'=单个格子选择，'area'=框选区域 */
   editType: {
-    type: String,
+    type: String as PropType<'click' | 'area'>,
     default: 'click'
+  },
+  /** 拼豆图纸数据 */
+  patternGrid: {
+    type: Array as PropType<PatternCell[][]>,
+    default: () => []
   }
 });
 
@@ -103,43 +131,43 @@ const emit = defineEmits(['cell-selected', 'area-selected']);
  * ============ 缩放平移相关状态 ============
  */
 /** 缩放倍数 */
-const scale = ref(1);
+const scale = ref<number>(1);
 
 /** X轴平移偏移量 */
-const offsetX = ref(0);
+const offsetX = ref<number>(0);
 
 /** Y轴平移偏移量 */
-const offsetY = ref(0);
+const offsetY = ref<number>(0);
 
 /** 是否正在拖拖 */
-const isDragging = ref(false);
+const isDragging = ref<boolean>(false);
 
 /** 拖拖开始时的X坐标 */
-const dragStartX = ref(0);
+const dragStartX = ref<number>(0);
 
 /** 拖拖开始时的Y坐标 */
-const dragStartY = ref(0);
+const dragStartY = ref<number>(0);
 
 /**
  * ============ Canvas和选择相关状态 ============
  */
 /** Canvas元素引用 */
-const patternCanvas = ref(null);
+const patternCanvas = ref<HTMLCanvasElement | null>(null);
 
 /** 容器元素引用 */
-const containerRef = ref(null);
+const containerRef = ref<HTMLElement | null>(null);
 
 /** 指针是否按下 */
-const pointerDown = ref(false);
+const pointerDown = ref<boolean>(false);
 
 /** 框选开始位置 */
-const selectionStart = ref(null);
+const selectionStart = ref<Point | null>(null);
 
 /** 框选区域 */
-const selectionRect = ref(null);
+const selectionRect = ref<SelectionRect | null>(null);
 
 /** 单个选中格子 */
-const selectedCell = ref(null);
+const selectedCell = ref<Point | null>(null);
 
 /**
  * ============ 计算属性 ============
@@ -148,7 +176,11 @@ const selectedCell = ref(null);
 /**
  * 计算CSS变换样式（用于缩放和平移）
  */
-const transformStyle = computed(() => {
+const transformStyle = computed<{
+  transform: string;
+  transformOrigin: string;
+  transition: string;
+}>(() => {
   return {
     transform: `translate(${offsetX.value}px, ${offsetY.value}px) scale(${scale.value})`,
     transformOrigin: '0 0',
@@ -159,8 +191,8 @@ const transformStyle = computed(() => {
 /**
  * 单个选中格子的样式
  */
-const selectedCellStyle = computed(() => {
-  if (!selectedCell.value) return {};
+const selectedCellStyle = computed<Record<string, string>>(() => {
+  if (!selectedCell.value) return { left: '0px', top: '0px', width: '0px', height: '0px' };
   const displayScale = getDisplayScale();
   return {
     left: `${(props.axisMargin + selectedCell.value.x * props.cellSize) * displayScale.x * scale.value + offsetX.value}px`,
@@ -173,8 +205,8 @@ const selectedCellStyle = computed(() => {
 /**
  * 框选区域的样式
  */
-const selectionRectStyle = computed(() => {
-  if (!selectionRect.value) return {};
+const selectionRectStyle = computed<Record<string, string>>(() => {
+  if (!selectionRect.value) return { left: '0px', top: '0px', width: '0px', height: '0px' };
   const x1 = Math.min(selectionRect.value.x1, selectionRect.value.x2);
   const y1 = Math.min(selectionRect.value.y1, selectionRect.value.y2);
   const x2 = Math.max(selectionRect.value.x1, selectionRect.value.x2);
@@ -195,7 +227,7 @@ const selectionRectStyle = computed(() => {
 /**
  * 获取Canvas实际显示与内部坐标的缩放比
  */
-const getDisplayScale = () => {
+const getDisplayScale = (): { x: number; y: number } => {
   if (!patternCanvas.value) return { x: 1, y: 1 };
   const rect = patternCanvas.value.getBoundingClientRect();
   return {
@@ -209,7 +241,7 @@ const getDisplayScale = () => {
  * @param {PointerEvent} e - 指针事件
  * @returns {Object} 包含x和y坐标的对象
  */
-const getCanvasPointerPos = (e) => {
+const getCanvasPointerPos = (e: PointerEvent): { x: number; y: number } => {
   if (!patternCanvas.value) return { x: 0, y: 0 };
   const rect = patternCanvas.value.getBoundingClientRect();
   const scaleX = patternCanvas.value.width / rect.width;
@@ -225,7 +257,7 @@ const getCanvasPointerPos = (e) => {
  * @param {PointerEvent} e - 指针事件
  * @returns {Object} 包含x、y和inGrid（是否在网格内）的对象
  */
-const getGridCell = (e) => {
+const getGridCell = (e: PointerEvent): Point | null => {
   const pointer = getCanvasPointerPos(e);
   const x = Math.floor((pointer.x - props.axisMargin) / props.cellSize);
   const y = Math.floor((pointer.y - props.axisMargin) / props.cellSize);
@@ -236,7 +268,7 @@ const getGridCell = (e) => {
 /**
  * 约束点到网格范围内
  */
-const clampPointToGridLocal = (x, y) => {
+const clampPointToGridLocal = (x: number, y: number) => {
   return {
     x: Math.max(0, Math.min(props.gridWidth - 1, x)),
     y: Math.max(0, Math.min(props.gridHeight - 1, y))
@@ -246,7 +278,7 @@ const clampPointToGridLocal = (x, y) => {
 /**
  * 规范化选择区域
  */
-const normalizeSelectionLocal = (rect) => {
+const normalizeSelectionLocal = (rect: SelectionRect) => {
   const x1 = Math.max(0, Math.min(props.gridWidth - 1, rect.x1));
   const y1 = Math.max(0, Math.min(props.gridHeight - 1, rect.y1));
   const x2 = Math.max(0, Math.min(props.gridWidth - 1, rect.x2));
@@ -262,12 +294,13 @@ const normalizeSelectionLocal = (rect) => {
  * 处理鼠标滚轮（缩放）
  * @param {WheelEvent} e - 滚轮事件
  */
-const handleWheel = (e) => {
+const handleWheel = (e: WheelEvent) => {
   // 计算缩放因子（向上滚+10%，向下滚-10%）
   const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
   const newScale = Math.max(0.5, Math.min(3, scale.value * zoomFactor));
   
   // 保持鼠标位置为缩放中心
+  if (!containerRef.value) return;
   const rect = containerRef.value.getBoundingClientRect();
   const mouseX = e.clientX - rect.left;
   const mouseY = e.clientY - rect.top;
@@ -283,20 +316,20 @@ const handleWheel = (e) => {
  * 处理鼠标按下（开始拖拖）
  * @param {MouseEvent} e - 鼠标事件
  */
-const handleMouseDown = (e) => {
+const handleMouseDown = (e: MouseEvent) => {
   // 只在不在编辑模式下允许拖拖
   if (props.editMode) return;
   
   isDragging.value = true;
   dragStartX.value = e.clientX - offsetX.value;
-  dragStartY.value = e.clientY -offsetY.value;
+  dragStartY.value = e.clientY - offsetY.value;
 };
 
 /**
  * 处理鼠标移动（拖拖或编辑）
  * @param {MouseEvent} e - 鼠标事件
  */
-const handleMouseMove = (e) => {
+const handleMouseMove = (e: MouseEvent) => {
   if (isDragging.value) {
     // 实时更新偏移量
     offsetX.value = e.clientX - dragStartX.value;
@@ -307,7 +340,7 @@ const handleMouseMove = (e) => {
 /**
  * 处理鼠标抬起（结束拖拖）
  */
-const handleMouseUp = () => {
+const handleMouseUp = (): void => {
   isDragging.value = false;
 };
 
@@ -315,12 +348,13 @@ const handleMouseUp = () => {
  * 处理Canvas指针按下（编辑）
  * @param {PointerEvent} e - 指针事件
  */
-const handleCanvasPointerDown = (e) => {
+const handleCanvasPointerDown = (e: PointerEvent) => {
   if (!props.editMode || !patternCanvas.value) return;
   e.preventDefault();
   
-  const { x, y, inGrid } = getGridCell(e);
-  if (!inGrid) return;
+  const cell = getGridCell(e);
+  if (!cell || !cell.inGrid) return;
+  const { x, y } = cell;
 
   // 点击模式：单个格子选择
   if (props.editType === 'click') {
@@ -342,11 +376,13 @@ const handleCanvasPointerDown = (e) => {
  * 处理Canvas指针移动（框选）
  * @param {PointerEvent} e - 指针事件
  */
-const handleCanvasPointerMove = (e) => {
+const handleCanvasPointerMove = (e: PointerEvent) => {
   if (!props.editMode || props.editType !== 'area' || !pointerDown.value || !selectionStart.value) return;
   e.preventDefault();
   
-  const { x, y } = getGridCell(e);
+  const cell = getGridCell(e);
+  if (!cell) return;
+  const { x, y } = cell;
   const point = clampPointToGridLocal(x, y);
   
   selectionRect.value = {
@@ -361,7 +397,7 @@ const handleCanvasPointerMove = (e) => {
  * 处理Canvas指针抬起（结束框选）
  * @param {PointerEvent} e - 指针事件
  */
-const handleCanvasPointerUp = (e) => {
+const handleCanvasPointerUp = (e: PointerEvent) => {
   if (!props.editMode) return;
   
   if (props.editType === 'area' && selectionRect.value) {
@@ -377,7 +413,7 @@ const handleCanvasPointerUp = (e) => {
 /**
  * 重置视图（缩放和平移）
  */
-const resetViewport = () => {
+const resetViewport = (): void => {
   scale.value = 1;
   offsetX.value = 0;
   offsetY.value = 0;
@@ -418,6 +454,151 @@ watch(() => props.originalImageUrl, (newUrl) => {
     console.log('原始图片已更新');
   }
 });
+
+/**
+ * ============ 渲染逻辑 ============
+ */
+
+/**
+ * 绘制拼豆图纸
+ */
+const drawPattern = (): void => {
+  if (!patternCanvas.value || !props.patternGrid.length) return;
+
+  const canvas = patternCanvas.value;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return; // 如果无法获取2D上下文，直接返回
+
+  // 设置canvas尺寸
+  canvas.width = props.gridWidth * props.cellSize + props.axisMargin * 2;
+  canvas.height = props.gridHeight * props.cellSize + props.axisMargin * 2;
+
+  // 清空canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // ========== 绘制网格 ==========
+  // 绘制格子颜色
+  for (let y = 0; y < props.gridHeight; y++) {
+    for (let x = 0; x < props.gridWidth; x++) {
+      const cell = props.patternGrid[y]?.[x];
+      if (!cell) continue;
+
+      const cellX = props.axisMargin + x * props.cellSize;
+      const cellY = props.axisMargin + y * props.cellSize;
+
+      // 绘制格子颜色
+      ctx.fillStyle = `rgb(${cell.color.r}, ${cell.color.g}, ${cell.color.b})`;
+      ctx.fillRect(cellX, cellY, props.cellSize, props.cellSize);
+
+      // 绘制网格线：每5格粗线，其他细线
+      const isGridLine5X = x % 5 === 4;
+      const isGridLine5Y = y % 5 === 4;
+      const isGridLine5 = isGridLine5X || isGridLine5Y;
+
+      ctx.strokeStyle = isGridLine5 ? '#333' : '#ddd';
+      ctx.lineWidth = isGridLine5 ? 1.5 : 0.5;
+      ctx.strokeRect(cellX, cellY, props.cellSize, props.cellSize);
+
+      // 显示拼豆编号
+      if (props.cellSize >= 20 && cell.code) {
+        const colorCode = cell.code;
+        let fontSize = props.cellSize * 0.55;
+
+        ctx.font = `${fontSize}px Arial`;
+        const textWidth = ctx.measureText(colorCode).width;
+
+        if (textWidth > props.cellSize * 0.75) {
+          fontSize = (props.cellSize * 0.75 / textWidth) * fontSize;
+          ctx.font = `${fontSize}px Arial`;
+        }
+
+        const textX = cellX + props.cellSize / 2;
+        const textY = cellY + props.cellSize / 2;
+
+        // 绘制文字（带描边和填充）
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
+        ctx.lineWidth = 2;
+        ctx.strokeText(colorCode, textX, textY);
+        ctx.fillStyle = getContrastColor(cell.color.r, cell.color.g, cell.color.b);
+        ctx.fillText(colorCode, textX, textY);
+      }
+    }
+  }
+
+  // ========== 绘制坐标轴 ==========
+  if (props.cellSize >= 20) {
+    ctx.save();
+    // 坐标轴背景
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, props.axisMargin);
+    ctx.fillRect(0, 0, props.axisMargin, canvas.height);
+    ctx.fillRect(0, canvas.height - props.axisMargin, canvas.width, props.axisMargin);
+    ctx.fillRect(canvas.width - props.axisMargin, 0, props.axisMargin, canvas.height);
+
+    // 坐标轴线
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(props.axisMargin, props.axisMargin);
+    ctx.lineTo(props.axisMargin, canvas.height - props.axisMargin);
+    ctx.moveTo(props.axisMargin, props.axisMargin);
+    ctx.lineTo(canvas.width - props.axisMargin, props.axisMargin);
+    ctx.stroke();
+
+    // 绘制坐标标签
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 12px Arial';
+    ctx.textBaseline = 'middle';
+
+    const labelInterval = props.cellSize >= 20 ? 1 : 5;
+
+    for (let i = 0; i < props.gridWidth; i++) {
+      if (i === 0 || i === props.gridWidth - 1 || (i + 1) % labelInterval === 0) {
+        const label = `${i + 1}`;
+        const x = props.axisMargin + i * props.cellSize + props.cellSize / 2;
+        const topY = props.axisMargin / 2;
+        const bottomY = canvas.height - props.axisMargin / 2;
+
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x, topY);
+        ctx.fillText(label, x, bottomY);
+      }
+    }
+
+    for (let i = 0; i < props.gridHeight; i++) {
+      if (i === 0 || i === props.gridHeight - 1 || (i + 1) % labelInterval === 0) {
+        const label = `${i + 1}`;
+        const y = props.axisMargin + i * props.cellSize + props.cellSize / 2;
+        const leftX = props.axisMargin / 2;
+        const rightX = canvas.width - props.axisMargin / 2;
+
+        ctx.textAlign = 'right';
+        ctx.fillText(label, leftX, y);
+        ctx.textAlign = 'left';
+        ctx.fillText(label, rightX, y);
+      }
+    }
+    ctx.restore();
+  }
+};
+
+/**
+ * 监听patternGrid变化，重新绘制图纸
+ */
+watch(() => props.patternGrid, () => {
+  drawPattern();
+}, { deep: true, immediate: true });
+
+/**
+ * 获取对比色（用于文字）
+ */
+const getContrastColor = (r: number, g: number, b: number): string => {
+  // 使用亮度公式计算背景亮度
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 128 ? '#000000' : '#ffffff';
+};
 
 /**
  * 暴露接口供父组件使用

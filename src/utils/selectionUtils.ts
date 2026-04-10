@@ -1,4 +1,26 @@
-export const normalizeSelection = (rect, gridWidth, gridHeight) => {
+export interface SelectionRect {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface PendingSelection {
+  type: 'cell' | 'area';
+  x?: number;
+  y?: number;
+  x1?: number;
+  y1?: number;
+  x2?: number;
+  y2?: number;
+}
+
+export const normalizeSelection = (rect: SelectionRect, gridWidth: number, gridHeight: number) => {
   const x1 = Math.max(0, Math.min(gridWidth - 1, rect.x1));
   const y1 = Math.max(0, Math.min(gridHeight - 1, rect.y1));
   const x2 = Math.max(0, Math.min(gridWidth - 1, rect.x2));
@@ -13,26 +35,26 @@ export const normalizeSelection = (rect, gridWidth, gridHeight) => {
   };
 };
 
-export const clampPointToGrid = (x, y, gridWidth, gridHeight) => {
+export const clampPointToGrid = (x: number, y: number, gridWidth: number, gridHeight: number): Point => {
   return {
     x: Math.max(0, Math.min(gridWidth - 1, x)),
     y: Math.max(0, Math.min(gridHeight - 1, y))
   };
 };
 
-export const getPendingCells = (pendingSelection, gridWidth, gridHeight) => {
+export const getPendingCells = (pendingSelection: PendingSelection | null, gridWidth: number, gridHeight: number): Point[] => {
   if (!pendingSelection) return [];
 
   if (pendingSelection.type === 'cell') {
-    const x = Math.max(0, Math.min(gridWidth - 1, pendingSelection.x));
-    const y = Math.max(0, Math.min(gridHeight - 1, pendingSelection.y));
+    const x = Math.max(0, Math.min(gridWidth - 1, pendingSelection.x!));
+    const y = Math.max(0, Math.min(gridHeight - 1, pendingSelection.y!));
     return [{ x, y }];
   }
 
-  const x1 = Math.max(0, Math.min(gridWidth - 1, Math.min(pendingSelection.x1, pendingSelection.x2)));
-  const y1 = Math.max(0, Math.min(gridHeight - 1, Math.min(pendingSelection.y1, pendingSelection.y2)));
-  const x2 = Math.max(0, Math.min(gridWidth - 1, Math.max(pendingSelection.x1, pendingSelection.x2)));
-  const y2 = Math.max(0, Math.min(gridHeight - 1, Math.max(pendingSelection.y1, pendingSelection.y2)));
+  const x1 = Math.max(0, Math.min(gridWidth - 1, Math.min(pendingSelection.x1!, pendingSelection.x2!)));
+  const y1 = Math.max(0, Math.min(gridHeight - 1, Math.min(pendingSelection.y1!, pendingSelection.y2!)));
+  const x2 = Math.max(0, Math.min(gridWidth - 1, Math.max(pendingSelection.x1!, pendingSelection.x2!)));
+  const y2 = Math.max(0, Math.min(gridHeight - 1, Math.max(pendingSelection.y1!, pendingSelection.y2!)));
 
   const cells = [];
   for (let y = y1; y <= y2; y++) {

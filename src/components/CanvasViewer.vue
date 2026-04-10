@@ -30,7 +30,7 @@
     <!-- 重置按钮 -->
     <div class="canvas-controls">
       <el-button type="info" size="small" @click="resetViewport">
-        <el-icon><Zoom /></el-icon>
+        <el-icon><FullScreen /></el-icon>
         重置视图
       </el-button>
       <span class="control-hint">滚轮缩放 | 拖拽移动</span>
@@ -38,15 +38,29 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { Zoom } from '@element-plus/icons-vue';
+import type { PropType } from 'vue';
+import { FullScreen } from '@element-plus/icons-vue';
+
+interface Point {
+  x: number;
+  y: number;
+  inGrid?: boolean;
+}
+
+interface SelectionRect {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
 
 // Props定义 - 接收canvas和交互相关的属性
 const props = defineProps({
   // canvas 元素引用
   canvasRef: {
-    type: [Object, null],
+    type: Object as PropType<HTMLCanvasElement | null>,
     default: null
   },
   // 网格宽度
@@ -87,31 +101,35 @@ const emit = defineEmits(['cell-selected', 'area-selected']);
 // ============ 状态管理 ============
 
 // 缩放比例，默认自适应显示
-const scale = ref(1);
+const scale = ref<number>(1);
 
 // 平移偏移量
-const offsetX = ref(0);
-const offsetY = ref(0);
+const offsetX = ref<number>(0);
+const offsetY = ref<number>(0);
 
 // 鼠标拖拽相关状态
-const isDragging = ref(false);
-const dragStartX = ref(0);
-const dragStartY = ref(0);
+const isDragging = ref<boolean>(false);
+const dragStartX = ref<number>(0);
+const dragStartY = ref<number>(0);
 
 // 指针和选择相关状态
-const pointerDown = ref(false);
-const selectionStart = ref(null);
-const selectionRect = ref(null);
-const selectedCell = ref(null);
+const pointerDown = ref<boolean>(false);
+const selectionStart = ref<Point | null>(null);
+const selectionRect = ref<SelectionRect | null>(null);
+const selectedCell = ref<Point | null>(null);
 
 // DOM引用
-const container = ref(null);
-const patternCanvas = ref(null);
+const container = ref<HTMLElement | null>(null);
+const patternCanvas = ref<HTMLCanvasElement | null>(null);
 
 // ============ 计算属性 ============
 
 // 计算变换样式
-const transformStyle = computed(() => {
+const transformStyle = computed<{
+  transform: string;
+  transformOrigin: string;
+  transition: string;
+}>(() => {
   return {
     transform: `translate(${offsetX.value}px, ${offsetY.value}px) scale(${scale.value})`,
     transformOrigin: '0 0',
@@ -120,8 +138,8 @@ const transformStyle = computed(() => {
 });
 
 // 单个选中格子的样式
-const selectedCellStyle = computed(() => {
-  if (!selectedCell.value) return {};
+const selectedCellStyle = computed<Record<string, string>>(() => {
+  if (!selectedCell.value) return { left: '0px', top: '0px', width: '0px', height: '0px' };
   const displayScale = getDisplayScale();
   return {
     left: `${(props.axisMargin + selectedCell.value.x * props.cellSize) * displayScale.x * scale.value + offsetX.value}px`,
@@ -132,8 +150,8 @@ const selectedCellStyle = computed(() => {
 });
 
 // 框选区域的样式
-const selectionRectStyle = computed(() => {
-  if (!selectionRect.value) return {};
+const selectionRectStyle = computed<Record<string, string>>(() => {
+  if (!selectionRect.value) return { left: '0px', top: '0px', width: '0px', height: '0px' };
   const x1 = Math.min(selectionRect.value.x1, selectionRect.value.x2);
   const y1 = Math.min(selectionRect.value.y1, selectionRect.value.y2);
   const x2 = Math.max(selectionRect.value.x1, selectionRect.value.x2);
@@ -150,7 +168,7 @@ const selectionRectStyle = computed(() => {
 // ============ 工具方法 ============
 
 // 获取canvas实际显示与内部坐标的缩放比
-const getDisplayScale = () => {
+const getDisplayScale = (): { x: number; y: number } => {
   if (!patternCanvas.value) return { x: 1, y: 1 };
   const rect = patternCanvas.value.getBoundingClientRect();
   return {
@@ -160,7 +178,7 @@ const getDisplayScale = () => {
 };
 
 // 获取相对于canvas的鼠标位置
-const getCanvasPointerPos = (e) => {
+const getCanvasPointerPos = (e: PointerEvent): { x: number; y: number } => {
   if (!patternCanvas.value) return { x: 0, y: 0 };
   const rect = patternCanvas.value.getBoundingClientRect();
   const scaleX = patternCanvas.value.width / rect.width;
@@ -172,7 +190,7 @@ const getCanvasPointerPos = (e) => {
 };
 
 // 获取指针对应的网格格子
-const getGridCell = (e) => {
+const getGridCell = (e: PointerEvent): Point | null => {
   const pointer = getCanvasPointerPos(e);
   const x = Math.floor((pointer.x - props.axisMargin) / props.cellSize);
   const y = Math.floor((pointer.y - props.axisMargin) / props.cellSize);
@@ -181,7 +199,7 @@ const getGridCell = (e) => {
 };
 
 // 约束点到网格范围内
-const clampPointToGrid = (x, y) => {
+const clampPointToGrid = (x: number, y: number) => {
   return {
     x: Math.max(0, Math.min(props.gridWidth - 1, x)),
     y: Math.max(0, Math.min(props.gridHeight - 1, y))
@@ -189,7 +207,7 @@ const clampPointToGrid = (x, y) => {
 };
 
 // 规范化选择区域
-const normalizeSelection = (rect) => {
+const normalizeSelection = (rect: SelectionRect) => {
   const x1 = Math.max(0, Math.min(props.gridWidth - 1, rect.x1));
   const y1 = Math.max(0, Math.min(props.gridHeight - 1, rect.y1));
   const x2 = Math.max(0, Math.min(props.gridWidth - 1, rect.x2));
@@ -200,12 +218,13 @@ const normalizeSelection = (rect) => {
 // ============ 交互事件处理 ============
 
 // 处理缩放（鼠标滚轮）
-const handleWheel = (e) => {
+const handleWheel = (e: WheelEvent) => {
   // 计算缩放因子（向上滚+10%，向下滚-10%）
   const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
   const newScale = Math.max(0.5, Math.min(3, scale.value * zoomFactor));
   
   // 保持鼠标位置为缩放中心
+  if (!container.value) return;
   const rect = container.value.getBoundingClientRect();
   const mouseX = e.clientX - rect.left;
   const mouseY = e.clientY - rect.top;
@@ -218,7 +237,7 @@ const handleWheel = (e) => {
 };
 
 // 处理鼠标按下（开始拖拖）
-const handleMouseDown = (e) => {
+const handleMouseDown = (e: MouseEvent) => {
   // 只在不在canvas编辑时允许拖拖
   if (props.editMode) return;
   
@@ -228,7 +247,7 @@ const handleMouseDown = (e) => {
 };
 
 // 处理鼠标移动（拖拖或编辑）
-const handleMouseMove = (e) => {
+const handleMouseMove = (e: MouseEvent) => {
   if (isDragging.value) {
     // 实时更新偏移量
     offsetX.value = e.clientX - dragStartX.value;
@@ -237,17 +256,18 @@ const handleMouseMove = (e) => {
 };
 
 // 处理鼠标抬起（结束拖拖）
-const handleMouseUp = () => {
+const handleMouseUp = (): void => {
   isDragging.value = false;
 };
 
 // 处理Canvas指针按下（编辑）
-const handleCanvasPointerDown = (e) => {
+const handleCanvasPointerDown = (e: PointerEvent) => {
   if (!props.editMode || !patternCanvas.value) return;
   e.preventDefault();
   
-  const { x, y, inGrid } = getGridCell(e);
-  if (!inGrid) return;
+  const cell = getGridCell(e);
+  if (!cell || !cell.inGrid) return;
+  const { x, y } = cell;
 
   // 点击模式：单个格子选择
   if (props.editType === 'click') {
@@ -266,11 +286,13 @@ const handleCanvasPointerDown = (e) => {
 };
 
 // 处理Canvas指针移动（框选）
-const handleCanvasPointerMove = (e) => {
+const handleCanvasPointerMove = (e: PointerEvent) => {
   if (!props.editMode || props.editType !== 'area' || !pointerDown.value || !selectionStart.value) return;
   e.preventDefault();
   
-  const { x, y } = getGridCell(e);
+  const cell = getGridCell(e);
+  if (!cell) return;
+  const { x, y } = cell;
   const point = clampPointToGrid(x, y);
   
   selectionRect.value = {
@@ -282,7 +304,7 @@ const handleCanvasPointerMove = (e) => {
 };
 
 // 处理Canvas指针抬起（结束框选）
-const handleCanvasPointerUp = (e) => {
+const handleCanvasPointerUp = (e: PointerEvent) => {
   if (!props.editMode) return;
   
   if (props.editType === 'area' && selectionRect.value) {
@@ -296,7 +318,7 @@ const handleCanvasPointerUp = (e) => {
 };
 
 // 重置视图（回到初始状态）
-const resetViewport = () => {
+const resetViewport = (): void => {
   scale.value = 1;
   offsetX.value = 0;
   offsetY.value = 0;
