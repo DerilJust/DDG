@@ -280,14 +280,8 @@ watch([selectedBrand, patternPalette], () => {
   }
 });
 
-// 监听标签页切换，当切换到拼豆图纸标签页时重新渲染
-watch(activeTab, (newTab) => {
-  if (newTab === 'pattern' && patternGrid.value.length > 0) {
-    // 延迟执行以确保组件已挂载
-    nextTick(() => {
-      renderPatternGrid();
-    });
-  }
+// 监听标签页切换（预览区域已自动处理patternGrid变化）
+watch(activeTab, () => {
 });
 
 // 切换侧边栏
@@ -357,180 +351,21 @@ const refreshColorStats = (): void => {
 };
 
 /**
- * 渲染拼豆图纸到canvas
- * 功能：绘制网格、颜色、编号、坐标轴等
- * 细节：每5格绘制粗线，其他位置细线
+ * 渲染待定选择预览（叠加在图案之上）
+ * 注意：基础图案由 PreviewSection 自动渲染
  */
 const renderPatternGrid = (): void => {
-  // 获取canvas引用
   const canvas = getPreviewCanvas();
-  if (!canvas) {
-    // 如果canvas还没准备好，延迟执行
-    setTimeout(renderPatternGrid, 100);
-    return;
-  }
-
+  if (!canvas) return;
   if (!patternGrid.value.length) return;
 
-  // 获取2D绘图上下文
   const ctx = canvas.getContext('2d');
-
-  // ========== 配置参数 ==========
-  // 单个格子的像素大小
-  const cellSize = showNumbers.value ? 40 : 20;
-  // 坐标轴的边距
-  const axisMargin = showNumbers.value ? 44 : 12;
-  // 坐标标签的显示间隔
-  const labelInterval = cellSize >= 40 ? 1 : 5;
-
-  // ========== 初始化canvas ==========
-  // 计算canvas总大小（包括坐标轴）
-  canvas.width = gridWidth.value * cellSize + axisMargin * 2;
-  canvas.height = gridHeight.value * cellSize + axisMargin * 2;
-
-  // 清空canvas内容
   if (!ctx) return;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // ========== 绘制网格格子和颜色 ==========
-  for (let y = 0; y < gridHeight.value; y++) {
-    for (let x = 0; x < gridWidth.value; x++) {
-      // 获取格子数据
-      const cell = patternGrid.value[y]?.[x];
-      if (!cell) continue;
+  const cellSize = showNumbers.value ? 40 : 20;
+  const axisMargin = showNumbers.value ? 44 : 12;
 
-      // 计算格子的实际像素位置
-      const cellX = axisMargin + x * cellSize;
-      const cellY = axisMargin + y * cellSize;
-
-      // 绘制格子颜色
-      ctx.fillStyle = `rgb(${cell.color.r}, ${cell.color.g}, ${cell.color.b})`;
-      ctx.fillRect(cellX, cellY, cellSize, cellSize);
-
-      // ========== 绘制网格线（每5格粗线，其他细线）==========
-      // 判断是否在5格的边界上
-      const isGridLine5X = (x + 1) % 5 === 0;
-      const isGridLine5Y = (y + 1) % 5 === 0;
-
-      // 根据位置决定线条粗细
-      if (isGridLine5X || isGridLine5Y) {
-        // 5格边界线：粗线（黑色）
-        ctx.beginPath();
-        ctx.strokeStyle = '#333';
-        ctx.lineWidth = 1.5;
-        if (isGridLine5X) {
-          ctx.moveTo(cellX + cellSize, cellY);
-          ctx.lineTo(cellX + cellSize, cellY + cellSize);
-          ctx.stroke();
-        }
-        if (isGridLine5Y) {
-          ctx.moveTo(cellX, cellY + cellSize);
-          ctx.lineTo(cellX + cellSize, cellY + cellSize);
-          ctx.stroke();
-        }
-      } else {
-        // 其他边界线：细线（浅灰色）
-        ctx.strokeStyle = '#ddd';
-        ctx.lineWidth = 0.5;
-        ctx.strokeRect(cellX, cellY, cellSize, cellSize);
-      }
-
-      // ========== 绘制拼豆编号 ==========
-      if (showNumbers.value && cell.code) {
-        const colorCode = cell.code;
-        let fontSize = cellSize * 0.55;
-
-        // 设置字体
-        ctx.font = `${fontSize}px Arial`;
-        const textWidth = ctx.measureText(colorCode).width;
-
-        // 如果文字超过格子宽度，缩小字体
-        if (textWidth > cellSize * 0.75) {
-          fontSize = (cellSize * 0.75 / textWidth) * fontSize;
-          ctx.font = `${fontSize}px Arial`;
-        }
-
-        // 计算文字位置（居中）
-        const textX = cellX + cellSize / 2;
-        const textY = cellY + cellSize / 2;
-
-        // 绘制文字（含描边和填充以增强可读性）
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
-        ctx.lineWidth = 2;
-        ctx.strokeText(colorCode, textX, textY);
-        ctx.fillStyle = getContrastColor(cell.color.r, cell.color.g, cell.color.b);
-        ctx.fillText(colorCode, textX, textY);
-      }
-    }
-  }
-
-  // ========== 绘制坐标轴 ==========
-  if (showNumbers.value) {
-    ctx.save();
-
-    // 绘制坐标轴背景（白色）
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, canvas.width, axisMargin);
-    ctx.fillRect(0, 0, axisMargin, canvas.height);
-    ctx.fillRect(0, canvas.height - axisMargin, canvas.width, axisMargin);
-    ctx.fillRect(canvas.width - axisMargin, 0, axisMargin, canvas.height);
-
-    // 绘制坐标轴边框线
-    ctx.strokeStyle = '#666';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(axisMargin, axisMargin);
-    ctx.lineTo(axisMargin, canvas.height - axisMargin);
-    ctx.moveTo(axisMargin, axisMargin);
-    ctx.lineTo(canvas.width - axisMargin, axisMargin);
-    ctx.stroke();
-
-    // ========== 绘制X轴标签 ==========
-    ctx.fillStyle = '#333';
-    ctx.font = 'bold 12px Arial';
-    ctx.textBaseline = 'middle';
-
-    for (let i = 0; i < gridWidth.value; i++) {
-      // 仅在边界和间隔位置显示标签
-      if (i === 0 || i === gridWidth.value - 1 || (i + 1) % labelInterval === 0) {
-        const label = `${i + 1}`;
-        const x = axisMargin + i * cellSize + cellSize / 2;
-        const topY = axisMargin / 2;
-        const bottomY = canvas.height - axisMargin / 2;
-
-        ctx.textAlign = 'center';
-        ctx.fillText(label, x, topY);
-        ctx.fillText(label, x, bottomY);
-      }
-    }
-
-    // ========== 绘制Y轴标签 ==========
-    for (let i = 0; i < gridHeight.value; i++) {
-      // 仅在边界和间隔位置显示标签
-      if (i === 0 || i === gridHeight.value - 1 || (i + 1) % labelInterval === 0) {
-        const label = `${i + 1}`;
-        const y = axisMargin + i * cellSize + cellSize / 2;
-        const leftX = axisMargin / 2;
-        const rightX = canvas.width - axisMargin / 2;
-
-        ctx.textAlign = 'right';
-        ctx.fillText(label, leftX, y);
-        ctx.textAlign = 'left';
-        ctx.fillText(label, rightX, y);
-      }
-    }
-
-    ctx.restore();
-  }
-
-  // ========== 绘制编辑预览 ==========
-  // 绘制待定的编辑预览（鼠标选中但未确认的区域）
   drawPendingPreview(ctx, axisMargin, cellSize);
-
-  // ========== 绘制统计信息（仅保留在导出预览中）==========
-  // 注：现在统计信息只在导出预览中显示，主图纸中不显示
 };
 
 const updateCellColor = (gridX: number, gridY: number, color: PerlerColor) => {
@@ -719,81 +554,6 @@ const downloadPattern = (): void => {
   link.click();
 };
 
-
-// 绘制统计信息到画布 (暂时未使用)
-/*
-const drawStatsToCanvas = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) => {
-  if (colorStats.value.length === 0) return;
-
-  // 计算统计信息区域的高度
-  const columns = 3;
-  const rowHeight = 48;
-  const statsHeight = Math.ceil(colorStats.value.length / columns) * rowHeight + 80;
-  const originalHeight = canvas.height;
-
-  // 调整画布大小
-  const tempCanvas = document.createElement('canvas');
-  const tempCtx = tempCanvas.getContext('2d');
-  if (!tempCtx) return;
-  tempCanvas.width = canvas.width;
-  tempCanvas.height = originalHeight + statsHeight;
-
-  // 复制原始画布内容
-  tempCtx.drawImage(canvas, 0, 0);
-
-  // 背景区域
-  tempCtx.fillStyle = '#f9fafb';
-  tempCtx.fillRect(0, originalHeight, canvas.width, statsHeight);
-  tempCtx.fillStyle = '#fff';
-  tempCtx.fillRect(12, originalHeight + 12, canvas.width - 24, statsHeight - 24);
-  tempCtx.strokeStyle = '#e6e9ed';
-  tempCtx.lineWidth = 1;
-  tempCtx.strokeRect(12, originalHeight + 12, canvas.width - 24, statsHeight - 24);
-
-  // 标题
-  tempCtx.fillStyle = '#333';
-  tempCtx.font = 'bold 16px Arial';
-  tempCtx.textAlign = 'left';
-  tempCtx.fillText('拼豆数量统计', 24, originalHeight + 38);
-
-  const columnWidth = (canvas.width - 48) / columns;
-  colorStats.value.forEach((stat: ColorStat, index) => {
-    const row = Math.floor(index / columns);
-    const col = index % columns;
-    const x = 24 + col * columnWidth;
-    const y = originalHeight + 60 + row * rowHeight;
-
-    // 卡片背景
-    tempCtx.fillStyle = '#ffffff';
-    tempCtx.fillRect(x, y, columnWidth - 16, rowHeight - 12);
-    tempCtx.strokeStyle = '#e8edf3';
-    tempCtx.lineWidth = 1;
-    tempCtx.strokeRect(x, y, columnWidth - 16, rowHeight - 12);
-
-    // 颜色块
-    tempCtx.fillStyle = `rgb(${stat.color.r}, ${stat.color.g}, ${stat.color.b})`;
-    tempCtx.fillRect(x + 10, y + 10, 24, 24);
-
-    // 文字：编号与数量同一行显示
-    tempCtx.fillStyle = '#333';
-    tempCtx.font = '14px Arial';
-    tempCtx.textAlign = 'left';
-    tempCtx.fillText(`${stat.code}  ${stat.count} 颗`, x + 40, y + 28);
-  });
-
-  // 更新原始画布
-  canvas.width = tempCanvas.width;
-  canvas.height = tempCanvas.height;
-  ctx.drawImage(tempCanvas, 0, 0);
-};
-*/
-
-// 获取对比色（用于文字）
-const getContrastColor = (r: number, g: number, b: number): string => {
-  // 计算亮度
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  return brightness > 128 ? '#000000' : '#ffffff';
-};
 
 // 初始化颜色数据
 loadColorData();

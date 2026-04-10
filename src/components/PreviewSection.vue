@@ -53,6 +53,7 @@
 import { computed, ref, watch } from 'vue';
 import type { PropType } from 'vue';
 import { Grid } from '@element-plus/icons-vue';
+import { drawPatternToCanvas } from '../utils/patternRenderer';
 
 interface Point {
   x: number;
@@ -465,123 +466,17 @@ watch(() => props.originalImageUrl, (newUrl) => {
 const drawPattern = (): void => {
   if (!patternCanvas.value || !props.patternGrid.length) return;
 
-  const canvas = patternCanvas.value;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return; // 如果无法获取2D上下文，直接返回
+  const ctx = patternCanvas.value.getContext('2d');
+  if (!ctx) return;
 
-  // 设置canvas尺寸
-  canvas.width = props.gridWidth * props.cellSize + props.axisMargin * 2;
-  canvas.height = props.gridHeight * props.cellSize + props.axisMargin * 2;
-
-  // 清空canvas
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // ========== 绘制网格 ==========
-  // 绘制格子颜色
-  for (let y = 0; y < props.gridHeight; y++) {
-    for (let x = 0; x < props.gridWidth; x++) {
-      const cell = props.patternGrid[y]?.[x];
-      if (!cell) continue;
-
-      const cellX = props.axisMargin + x * props.cellSize;
-      const cellY = props.axisMargin + y * props.cellSize;
-
-      // 绘制格子颜色
-      ctx.fillStyle = `rgb(${cell.color.r}, ${cell.color.g}, ${cell.color.b})`;
-      ctx.fillRect(cellX, cellY, props.cellSize, props.cellSize);
-
-      // 绘制网格线：每5格粗线，其他细线
-      const isGridLine5X = x % 5 === 4;
-      const isGridLine5Y = y % 5 === 4;
-      const isGridLine5 = isGridLine5X || isGridLine5Y;
-
-      ctx.strokeStyle = isGridLine5 ? '#333' : '#ddd';
-      ctx.lineWidth = isGridLine5 ? 1.5 : 0.5;
-      ctx.strokeRect(cellX, cellY, props.cellSize, props.cellSize);
-
-      // 显示拼豆编号
-      if (props.cellSize >= 20 && cell.code) {
-        const colorCode = cell.code;
-        let fontSize = props.cellSize * 0.55;
-
-        ctx.font = `${fontSize}px Arial`;
-        const textWidth = ctx.measureText(colorCode).width;
-
-        if (textWidth > props.cellSize * 0.75) {
-          fontSize = (props.cellSize * 0.75 / textWidth) * fontSize;
-          ctx.font = `${fontSize}px Arial`;
-        }
-
-        const textX = cellX + props.cellSize / 2;
-        const textY = cellY + props.cellSize / 2;
-
-        // 绘制文字（带描边和填充）
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
-        ctx.lineWidth = 2;
-        ctx.strokeText(colorCode, textX, textY);
-        ctx.fillStyle = getContrastColor(cell.color.r, cell.color.g, cell.color.b);
-        ctx.fillText(colorCode, textX, textY);
-      }
-    }
-  }
-
-  // ========== 绘制坐标轴 ==========
-  if (props.cellSize >= 20) {
-    ctx.save();
-    // 坐标轴背景
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, canvas.width, props.axisMargin);
-    ctx.fillRect(0, 0, props.axisMargin, canvas.height);
-    ctx.fillRect(0, canvas.height - props.axisMargin, canvas.width, props.axisMargin);
-    ctx.fillRect(canvas.width - props.axisMargin, 0, props.axisMargin, canvas.height);
-
-    // 坐标轴线
-    ctx.strokeStyle = '#666';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(props.axisMargin, props.axisMargin);
-    ctx.lineTo(props.axisMargin, canvas.height - props.axisMargin);
-    ctx.moveTo(props.axisMargin, props.axisMargin);
-    ctx.lineTo(canvas.width - props.axisMargin, props.axisMargin);
-    ctx.stroke();
-
-    // 绘制坐标标签
-    ctx.fillStyle = '#333';
-    ctx.font = 'bold 12px Arial';
-    ctx.textBaseline = 'middle';
-
-    const labelInterval = props.cellSize >= 20 ? 1 : 5;
-
-    for (let i = 0; i < props.gridWidth; i++) {
-      if (i === 0 || i === props.gridWidth - 1 || (i + 1) % labelInterval === 0) {
-        const label = `${i + 1}`;
-        const x = props.axisMargin + i * props.cellSize + props.cellSize / 2;
-        const topY = props.axisMargin / 2;
-        const bottomY = canvas.height - props.axisMargin / 2;
-
-        ctx.textAlign = 'center';
-        ctx.fillText(label, x, topY);
-        ctx.fillText(label, x, bottomY);
-      }
-    }
-
-    for (let i = 0; i < props.gridHeight; i++) {
-      if (i === 0 || i === props.gridHeight - 1 || (i + 1) % labelInterval === 0) {
-        const label = `${i + 1}`;
-        const y = props.axisMargin + i * props.cellSize + props.cellSize / 2;
-        const leftX = props.axisMargin / 2;
-        const rightX = canvas.width - props.axisMargin / 2;
-
-        ctx.textAlign = 'right';
-        ctx.fillText(label, leftX, y);
-        ctx.textAlign = 'left';
-        ctx.fillText(label, rightX, y);
-      }
-    }
-    ctx.restore();
-  }
+  drawPatternToCanvas(ctx, patternCanvas.value, props.patternGrid, {
+    gridWidth: props.gridWidth,
+    gridHeight: props.gridHeight,
+    cellSize: props.cellSize,
+    axisMargin: props.axisMargin,
+    showNumbers: props.cellSize >= 20,
+    gridLineInterval: 5
+  });
 };
 
 /**
@@ -590,15 +485,6 @@ const drawPattern = (): void => {
 watch(() => props.patternGrid, () => {
   drawPattern();
 }, { deep: true, immediate: true });
-
-/**
- * 获取对比色（用于文字）
- */
-const getContrastColor = (r: number, g: number, b: number): string => {
-  // 使用亮度公式计算背景亮度
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  return brightness > 128 ? '#000000' : '#ffffff';
-};
 
 /**
  * 暴露接口供父组件使用
