@@ -108,51 +108,70 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { useAppStore } from '../store/appStore';
+import { storeToRefs } from 'pinia';
+import { gcd } from '../utils/patternUtils';
 import { MagicStick, Download, Setting } from '@element-plus/icons-vue';
 
-const props = defineProps({
-  gridWidth: { type: Number, default: 30 },
-  gridHeight: { type: Number, default: 30 },
-  colorCount: { type: Number, default: 20 },
-  brand: { type: String, default: 'MARD' },
-  showNumbers: { type: Boolean, default: false },
-  imageRatio: { type: String, default: '暂无图片' },
-  lockAspectRatio: { type: Boolean, default: false }
+const emit = defineEmits(['download']);
+const appStore = useAppStore();
+const { gridWidth, gridHeight, colorCount, selectedBrand, showNumbers, lockAspectRatio, originalImageSize } = storeToRefs(appStore);
+
+const ratioLocking = ref(false);
+
+watch(gridWidth, (newWidth) => {
+  if (!lockAspectRatio.value || ratioLocking.value) return;
+  ratioLocking.value = true;
+  
+  // 解析比例并计算宽高比
+  const ratioParts = imageRatio.value.split(':');
+  if (ratioParts.length === 2) {
+    const widthRatio = Number(ratioParts[0]);
+    const heightRatio = Number(ratioParts[1]);
+    const aspectRatio = widthRatio / heightRatio;
+    
+    // 根据宽高比计算新的高度
+    const newHeight = Math.max(1, Math.round(newWidth / aspectRatio));
+    appStore.setGridHeight(newHeight);
+  }
+  
+  ratioLocking.value = false;
 });
 
-const emit = defineEmits(['update:gridWidth', 'update:gridHeight', 'update:colorCount', 'update:brand', 'update:showNumbers', 'update:lockAspectRatio', 'generate', 'download']);
-
-// 响应式绑定
-const gridWidth = computed<number>({
-  get: () => props.gridWidth,
-  set: (val) => emit('update:gridWidth', val)
-});
-const gridHeight = computed<number>({
-  get: () => props.gridHeight,
-  set: (val) => emit('update:gridHeight', val)
-});
-const colorCount = computed<number>({
-  get: () => props.colorCount,
-  set: (val) => emit('update:colorCount', val)
-});
-const selectedBrand = computed<string>({
-  get: () => props.brand,
-  set: (val) => emit('update:brand', val)
-});
-const showNumbers = computed<boolean>({
-  get: () => props.showNumbers,
-  set: (val) => emit('update:showNumbers', val)
-});
-const imageRatio = computed<string>(() => props.imageRatio);
-const lockAspectRatio = computed<boolean>({
-  get: () => props.lockAspectRatio,
-  set: (val) => emit('update:lockAspectRatio', val)
+watch(gridHeight, (newHeight) => {
+  if (!lockAspectRatio.value || ratioLocking.value) return;
+  ratioLocking.value = true;
+  
+  // 解析比例并计算宽高比
+  const ratioParts = imageRatio.value.split(':');
+  if (ratioParts.length === 2) {
+    const widthRatio = Number(ratioParts[0]);
+    const heightRatio = Number(ratioParts[1]);
+    const aspectRatio = widthRatio / heightRatio;
+    
+    // 根据宽高比计算新的宽度
+    const newWidth = Math.max(1, Math.round(newHeight * aspectRatio));
+    appStore.setGridWidth(newWidth);
+  }
+  
+  ratioLocking.value = false;
 });
 
-const generatePattern = (): void => emit('generate');
-const downloadPattern = (): void => emit('download');
+const imageRatio = computed<string>(() => {
+  const { width, height } = originalImageSize.value;
+  if (!width || !height) return '暂无图片';
+  const ratio = gcd(width, height);
+  return `${width / ratio}:${height / ratio}`;
+});
 
+const generatePattern = (): void => {
+  appStore.generatePattern();
+};
+
+const downloadPattern = (): void => {
+  emit('download');
+};
 </script>
 
 <style scoped>

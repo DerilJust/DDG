@@ -39,22 +39,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import type { PropType } from 'vue';
-
-interface ImageData {
-    offsetX: number;
-    offsetY: number;
-    displayWidth: number;
-    displayHeight: number;
-    displayScaleX: number;
-    displayScaleY: number;
-    image: HTMLImageElement;
-}
-
-interface CroppedResult {
-    image: HTMLImageElement;
-    dataUrl: string;
-    file: File;
-}
+import type { CropperImageData, CroppedResult } from '../types';
 
 const props = defineProps({
     visible: {
@@ -62,7 +47,7 @@ const props = defineProps({
         default: false
     },
     imageData: {
-        type: Object as PropType<ImageData | null>,
+        type: Object as PropType<CropperImageData | null>,
         default: null
     }
 });
@@ -75,7 +60,7 @@ const dialogVisible = computed<boolean>({
 
 const cropperCanvas = ref<HTMLCanvasElement | null>(null);
 const canvasContext = ref<CanvasRenderingContext2D | null>(null);
-const localImageData = ref<ImageData | null>(null);
+const localImageData = ref<CropperImageData | null>(null);
 const zoomLevel = ref<number>(100);
 const cropRect = ref<{
     x: number;
@@ -342,7 +327,7 @@ const constrainCropRect = (): void => {
     crop.height = Math.max(20, crop.height);
 };
 
-const cropCanvasImage = (img: ImageData, crop: any): Promise<CroppedResult> => {
+const cropCanvasImage = (img: CropperImageData, crop: any): Promise<CroppedResult> => {
     return new Promise((resolve, reject) => {
         const sourceX = (crop.x - img.offsetX) / img.displayScaleX;
         const sourceY = (crop.y - img.offsetY) / img.displayScaleY;

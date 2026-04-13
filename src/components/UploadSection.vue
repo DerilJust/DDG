@@ -21,7 +21,7 @@
       </div>
 
       <div v-if="previewUrl" class="image-preview">
-        <el-image :src="previewUrl" fit="cover" class="preview-img" :preview-src-list="[previewUrl]">
+        <el-image :src="previewUrl" fit="cover" class="preview-img" :preview-src-list="[previewUrl]" preview-teleported>
           <template #error>
             <div class="image-error">
               <el-icon class="error-icon">
@@ -34,26 +34,28 @@
       </div>
     </el-card>
   </div>
+
+  <CropperDialog :visible="cropperVisible" :image-data="imageData" @update:visible="cropperVisible = $event"
+    @upload="handleImageUploaded" />
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { storeToRefs } from 'pinia';
 import { UploadFilled, Check, Picture } from '@element-plus/icons-vue';
+import CropperDialog from './CropperDialog.vue';
+import { useAppStore } from '../store/appStore';
+import type { CropperImageData, SelectedImageData, UploadedCropResult } from '../types';
 
-// 定义 props
-const props = defineProps({
-  imageUrl: {
-    type: String,
-    default: ''
-  }
-});
-const emit = defineEmits(['image-uploaded', 'image-selected']);
+const appStore = useAppStore();
+const { originalImageUrl } = storeToRefs(appStore);
 
-// 响应式数据
+/** 裁剪所需的图片数据 */
+const imageData = ref<CropperImageData | null>(null);
 const originalImage = ref<File | null>(null);
-const previewUrl = ref<string>(props.imageUrl);
+const previewUrl = ref<string>(originalImageUrl.value || '');
 
-watch(() => props.imageUrl, (value: string) => {
+watch(originalImageUrl, (value: string) => {
   previewUrl.value = value;
 });
 
@@ -82,10 +84,9 @@ const showCropper = (): void => {
       const img = new Image();
       const imageUrl = e.target.result;
       img.onload = () => {
-        emit('image-selected', {
+        handleImageSelected({
           imageData: img,
-          imageUrl: imageUrl,
-          originalFile: originalImage.value
+          imageUrl: imageUrl
         });
       };
       img.src = imageUrl;
@@ -93,11 +94,40 @@ const showCropper = (): void => {
   };
   reader.readAsDataURL(originalImage.value);
 };
+
+/** 图片裁剪对话框的可见性 */
+const cropperVisible = ref<boolean>(false);
+
+const handleImageUploaded = (data: UploadedCropResult) => {
+  originalImage.value = data.file;
+  previewUrl.value = data.url;
+  appStore.setOriginalImage(data.file);
+  appStore.setOriginalImageUrl(data.url);
+  appStore.setInfoText('图片已上传');
+  appStore.setOriginalImageSize(data.width, data.height);
+  appStore.setGridSizeByImageRatio(data.width, data.height);
+};
+
+// 处理图片选择（用于裁剪）
+const handleImageSelected = (data: SelectedImageData) => {
+  imageData.value = {
+    offsetX: 0,
+    offsetY: 0,
+    displayWidth: data.imageData.width,
+    displayHeight: data.imageData.height,
+    displayScaleX: 1,
+    displayScaleY: 1,
+    image: data.imageData
+  };
+  previewUrl.value = data.imageUrl;
+  cropperVisible.value = true;
+};
+
 </script>
 
 <style scoped>
 .upload-section {
-  margin-bottom: 24px;
+  padding: 20px;
 }
 
 .section-title {

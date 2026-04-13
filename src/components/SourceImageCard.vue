@@ -1,94 +1,26 @@
 <template>
     <el-card class="source-card" shadow="hover">
-        <div class="card-header" @click="toggleCollapsed">
-            <div class="header-left">
-                <el-icon class="title-icon">
-                    <PictureFilled />
-                </el-icon>
-                <span>原图预览</span>
-            </div>
-            <el-button type="text" class="collapse-button" @click.stop="toggleCollapsed">
-                <el-icon>
-                    <ArrowDown v-if="collapsed" />
-                    <ArrowUp v-else />
-                </el-icon>
-                {{ collapsed ? '展开' : '收起' }}
-            </el-button>
+        <div v-if="originalImageUrl" class="source-image-wrapper">
+            <el-image :src="originalImageUrl" fit="contain" class="source-image" :preview-src-list="[originalImageUrl]" />
         </div>
-
-        <transition name="collapse">
-            <div v-show="!collapsed" class="source-body">
-                <div v-if="imageUrl" class="source-image-wrapper">
-                    <el-image :src="imageUrl" fit="contain" class="source-image" :preview-src-list="[imageUrl]" />
-                </div>
-                <div v-else class="source-placeholder">
-                    <p>请先上传原图并生成图纸。</p>
-                </div>
-            </div>
-        </transition>
+        <div v-else class="source-placeholder">
+            <p>请先上传原图并生成图纸。</p>
+        </div>
     </el-card>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { PictureFilled, ArrowDown, ArrowUp } from '@element-plus/icons-vue';
+import { storeToRefs } from 'pinia';
+import { useAppStore } from '../store/appStore';
 
-const props = defineProps({
-    imageUrl: {
-        type: String,
-        default: ''
-    }
-});
-
-const collapsed = ref<boolean>(false);
-
-const toggleCollapsed = (): void => {
-    collapsed.value = !collapsed.value;
-};
+const appStore = useAppStore();
+const { originalImageUrl } = storeToRefs(appStore);
 </script>
 
 <style scoped>
 .source-card {
     border-radius: 12px;
     overflow: hidden;
-}
-
-.card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 16px 20px;
-    background: linear-gradient(135deg, #f6f8fa 0%, #e9ecef 100%);
-    border-bottom: 1px solid #e4e7ed;
-    cursor: pointer;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 16px;
-    font-weight: 600;
-    color: #303133;
-}
-
-.title-icon {
-    font-size: 18px;
-    color: #409EFF;
-}
-
-.collapse-button {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: #606266;
-    font-size: 14px;
-}
-
-.source-body {
-    padding: 16px;
-    background-color: #fff;
 }
 
 .source-image-wrapper {
@@ -98,7 +30,7 @@ const toggleCollapsed = (): void => {
 
 .source-image {
     width: 100%;
-    height: 260px;
+    height: 700px;
     border-radius: 10px;
     border: 1px solid #e8edf3;
 }

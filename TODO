@@ -1,3 +1,6 @@
 1.完善canvas相关的编辑功能
 2.优化图像美观度
 3.专注拼豆模式开发
+4.ratio fallback get most cloest one
+5.select image region should has ratio lock button and pre-set buttons
+6.select dialog pro

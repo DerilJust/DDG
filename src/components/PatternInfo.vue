@@ -45,33 +45,12 @@
 </template>
 
 <script setup lang="ts">
-import type { PropType } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useAppStore } from '../store/appStore';
 import { InfoFilled, Message, DataAnalysis } from '@element-plus/icons-vue';
 
-interface ColorInfo {
-  r: number;
-  g: number;
-  b: number;
-  hex: string;
-}
-
-interface ColorStat {
-  code: string;
-  color: ColorInfo;
-  count: number;
-}
-
-// 定义 props
-const props = defineProps({
-  infoText: {
-    type: String,
-    default: '请上传图片并生成图纸'
-  },
-  colorStats: {
-    type: Array as PropType<ColorStat[]>,
-    default: () => []
-  }
-});
+const appStore = useAppStore();
+const { infoText, colorStats } = storeToRefs(appStore);
 </script>
 
 <style scoped>
