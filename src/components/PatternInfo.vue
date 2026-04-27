@@ -23,7 +23,7 @@
           <span>拼豆数量统计</span>
         </div>
       </template>
-      <el-table :data="colorStats" style="width: 100%" stripe border class="stats-table">
+      <el-table :data="colorStats" style="width: 100%" stripe class="stats-table">
         <el-table-column prop="code" label="颜色编号" width="120">
           <template #default="scope">
             <div class="stat-item">
@@ -56,7 +56,7 @@ const { infoText, colorStats } = storeToRefs(appStore);
 <style scoped>
 .pattern-info {
   margin-bottom: 24px;
-  padding-bottom: 24px;
+  padding: 16px;
 }
 
 .section-title {

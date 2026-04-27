@@ -178,6 +178,7 @@ const downloadPattern = (): void => {
 .controls-container {
   width: 100%;
   margin-bottom: 24px;
+  padding: 16px;
 }
 
 .section-title {
