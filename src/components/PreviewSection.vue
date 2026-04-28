@@ -1,16 +1,6 @@
 <template>
   <div class="preview-section">
-    <el-card class="preview-card" shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <el-icon class="header-icon">
-            <Grid />
-          </el-icon>
-          <span>拼豆图纸</span>
-        </div>
-      </template>
-
-      <!-- Canvas容器：支持缩放和平移 -->
+    <div class="canvas-wrapper">
       <div class="canvas-container" ref="containerRef"
         @wheel.prevent="handleWheel"
         @mousedown="handleMouseDown"
@@ -19,7 +9,6 @@
         @mouseleave="handleMouseUp"
         :style="{ cursor: isDragging ? 'grabbing' : 'grab' }">
 
-        <!-- 变换容器：通过CSS transform实现缩放和平移 -->
         <div :style="transformStyle">
           <canvas ref="patternCanvas" id="pattern-canvas" class="pattern-canvas"
             @pointerdown.stop="handleCanvasPointerDown"
@@ -29,23 +18,16 @@
           </canvas>
         </div>
 
-        <!-- 单个格子选中覆盖层 -->
         <div v-if="selectedCell" class="selection-overlay" :style="selectedCellStyle"></div>
 
-        <!-- 缩放比例提示 -->
-        <div class="zoom-info">{{ Math.round(scale * 100) }}%</div>
+        <div class="floating-controls">
+          <el-button size="small" circle @click="zoomOut" title="缩小">-</el-button>
+          <span class="zoom-display">{{ Math.round(scale * 100) }}%</span>
+          <el-button size="small" circle @click="zoomIn" title="放大">+</el-button>
+          <el-button size="small" @click="resetViewport" title="重置视图">重置</el-button>
+        </div>
       </div>
-
-      <!-- 控制按钮 -->
-      <div class="canvas-controls">
-        <el-button type="info" size="small" @click="zoomOut">-</el-button>
-        <el-button type="info" size="small" @click="zoomIn">+</el-button>
-        <el-button type="info" size="small" @click="resetViewport">
-          重置视图
-        </el-button>
-        <span class="control-hint">滚轮上下移动 | Ctrl+滚轮缩放</span>
-      </div>
-    </el-card>
+    </div>
   </div>
 </template>
 
@@ -53,7 +35,7 @@
 import { computed, ref, watch } from 'vue';
 import { useAppStore } from '../store/appStore';
 import { storeToRefs } from 'pinia';
-import { Grid } from '@element-plus/icons-vue';
+
 import { drawPatternToCanvas } from '../utils/patternRenderer';
 
 interface Point {
@@ -270,39 +252,16 @@ defineExpose({
   display: flex;
   gap: 20px;
   flex: 1;
-  min-height: 400px;
+  min-height: 200px;
 }
 
-.preview-card {
+.canvas-wrapper {
   flex: 1;
-  min-width: 400px;
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
-}
-
-.preview-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.15);
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: bold;
-  color: #303133;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, #f6f8fa 0%, #e9ecef 100%);
-  border-bottom: 1px solid #e4e7ed;
-}
-
-.header-icon {
-  font-size: 18px;
-  color: #409EFF;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e4e7ed;
 }
 
 /**
@@ -317,7 +276,6 @@ defineExpose({
   background: linear-gradient(135deg, #f0f2f5 0%, #e6e8eb 100%);
   overflow: hidden;
   position: relative;
-  border-radius: 0 0 8px 8px;
 }
 
 .canvas-container::before {
@@ -349,37 +307,27 @@ defineExpose({
   background-color: rgba(64, 158, 255, 0.12);
 }
 
-/**
- * 缩放比例信息提示
- */
-.zoom-info {
+.floating-controls {
   position: absolute;
   bottom: 12px;
-  right: 12px;
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  pointer-events: none;
-  z-index: 5;
-}
-
-/**
- * Canvas控制按钮
- */
-.canvas-controls {
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: white;
-  border-top: 1px solid #e4e7ed;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+  padding: 6px 10px;
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 10;
 }
 
-.control-hint {
+.zoom-display {
   font-size: 12px;
-  color: #909399;
-  margin-left: 12px;
+  color: #606266;
+  min-width: 40px;
+  text-align: center;
+  font-weight: 600;
 }
 </style>

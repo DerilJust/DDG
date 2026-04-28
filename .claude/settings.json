@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sort -t' ' -k1.1,1.1 -k1.2,1.5)",
+      "Bash(node -e \"const d = require\\('./src/colorMap/colorSystemMapping.json'\\); const codes = Object.values\\(d\\).map\\(v => v.MARD\\).filter\\(Boolean\\); const groups = {}; codes.forEach\\(c => { const p = c.match\\(/^[A-Z]+/\\)[0]; if \\(!groups[p]\\) groups[p] = []; groups[p].push\\(c\\); }\\); Object.keys\\(groups\\).sort\\(\\).forEach\\(k => console.log\\(k + ': ' + groups[k].length + ' colors'\\)\\);\")",
+      "Bash(node -e \"const d = require\\('./src/colorMap/colorSystemMapping.json'\\); const codes = Object.values\\(d\\).map\\(v => v.MARD\\).filter\\(Boolean\\); const groups = {}; codes.forEach\\(c => { const p = c.match\\(/^[A-Z]+/\\)[0]; if \\(!groups[p]\\) groups[p] = []; groups[p].push\\(c\\); }\\); Object.keys\\(groups\\).sort\\(\\).forEach\\(k => { console.log\\('--- ' + k + ' \\(' + groups[k].length + '\\) ---'\\); console.log\\(groups[k].sort\\(\\).join\\(', '\\)\\); }\\);\")",
+      "Bash(node -e \"const d=require\\('./src/colorMap/colorSystemMapping.json'\\);const p=new Set\\(\\);Object.values\\(d\\).forEach\\(v=>{const c=v.MARD;if\\(c\\)p.add\\(c.replace\\(/[0-9]/g,''\\)\\)}\\);console.log\\([...p].sort\\(\\).join\\('\\\\n'\\)\\)\")",
+      "Bash(node -e \"const d=require\\('./src/colorMap/colorSystemMapping.json'\\);const counts={};Object.values\\(d\\).forEach\\(v=>{const c=v.MARD;if\\(c\\){const px=c.replace\\(/[0-9]/g,''\\);counts[px]=\\(counts[px]||0\\)+1}}\\);Object.entries\\(counts\\).sort\\(\\).forEach\\(\\([k,v]\\)=>console.log\\(k+': '+v\\)\\)\")",
+      "Bash(node -e \"const d=require\\('./src/colorMap/colorSystemMapping.json'\\);const last5=Object.entries\\(d\\).slice\\(-10\\);last5.forEach\\(\\([k,v]\\)=>console.log\\(k,v\\)\\)\")",
+      "Bash(node -e \"const d = require\\('./src/colorMap/colorSystemMapping.json'\\); const groups = {A:[],B:[],C:[],D:[],E:[],F:[],G:[],H:[],M:[],P:[],R:[],ZG:[]}; Object.entries\\(d\\).forEach\\(\\([hex, v]\\) => { const c = v.MARD; if\\(!c\\) return; const p = c.match\\(/^[A-Z]+/\\)[0]; if\\(groups[p]\\) groups[p].push\\({code:c, hex}\\); }\\); Object.keys\\(groups\\).forEach\\(k => { console.log\\(k + ': ' + groups[k].slice\\(0,3\\).map\\(x=>x.code+' '+x.hex\\).join\\(', '\\) + ' ...'\\); }\\);\")"
+    ]
+  }
+}

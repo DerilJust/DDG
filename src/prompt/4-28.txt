@@ -1,0 +1,3 @@
+Plan model -> claude code
+1.需要重新设计编辑组件，加多几个tabs，一个是可以选到当前图纸有的颜色，一个是可以选到全部颜色（按照色系排列）。
+2.preview-section中的card-header去掉，并重新排列下面的控制按钮部分。

@@ -1,6 +1,6 @@
 <template>
   <div class="app-container">
-    <el-container>
+    <el-container class="root-container">
       <el-header height="60px" class="header">
         <div class="header-content">
           <el-button size="small" @click="toggleSidebar" class="collapse-btn">
@@ -24,46 +24,47 @@
           <Controls @generate="generatePattern" @download="downloadPattern" />
           <PatternInfo />
         </el-aside>
-        <el-main class="main">
-          <!-- 标签页切换 -->
-          <el-tabs v-model="activeTab" class="main-tabs">
-            <!-- 原图预览标签页 -->
-            <el-tab-pane label="原图预览" name="original">
-              <template #label>
-                <el-icon>
-                  <Picture />
-                </el-icon>
-                原图预览
-              </template>
-              <SourceImageCard />
-            </el-tab-pane>
+        <div class="main-wrapper">
+          <el-main class="main">
+            <el-tabs v-model="activeTab" class="main-tabs">
+              <el-tab-pane label="原图预览" name="original">
+                <template #label>
+                  <el-icon>
+                    <Picture />
+                  </el-icon>
+                  原图预览
+                </template>
+                <SourceImageCard />
+              </el-tab-pane>
 
-            <!-- 拼豆图纸标签页 -->
-            <el-tab-pane label="拼豆图纸" name="pattern">
-              <template #label>
-                <el-icon>
-                  <Grid />
-                </el-icon>
-                拼豆图纸
-              </template>
-              <PreviewSection ref="previewSection" />
-              <div class="pattern-editor-panel">
-                <EditPalette />
-              </div>
-            </el-tab-pane>
+              <el-tab-pane label="拼豆图纸" name="pattern">
+                <template #label>
+                  <el-icon>
+                    <Grid />
+                  </el-icon>
+                  拼豆图纸
+                </template>
+                <PreviewSection ref="previewSection" />
+              </el-tab-pane>
 
-            <!-- 导出预览标签页 -->
-            <el-tab-pane label="导出预览" name="export">
-              <template #label>
-                <el-icon>
-                  <Download />
-                </el-icon>
-                导出预览
-              </template>
-              <ExportPreview />
-            </el-tab-pane>
-          </el-tabs>
-        </el-main>
+              <el-tab-pane label="导出预览" name="export">
+                <template #label>
+                  <el-icon>
+                    <Download />
+                  </el-icon>
+                  导出预览
+                </template>
+                <ExportPreview />
+              </el-tab-pane>
+            </el-tabs>
+          </el-main>
+          <el-footer height="180px" class="editor-footer">
+            <EditPalette :palette="effectivePalette" :brand-palette="brandPalette" :active-color="selectedEditColor" :edit-mode="editMode"
+              :selected-tool="selectedTool" :can-undo="undoStack.length > 0" :can-redo="redoStack.length > 0"
+              @select="onEditSelectColor" @fill-all="onEditFillAll" @undo="onEditUndo" @redo="onEditRedo"
+              @update:edit-mode="appStore.setEditMode($event)" @update:selected-tool="appStore.setSelectedTool($event)" />
+          </el-footer>
+        </div>
       </el-container>
     </el-container>
 
@@ -71,8 +72,10 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useAppStore } from './store/appStore';
+import { buildBrandPalette } from './utils/patternUtils';
 import UploadSection from './components/UploadSection.vue';
 import Controls from './components/Controls.vue';
 import PreviewSection from './components/PreviewSection.vue';
@@ -83,6 +86,19 @@ import ExportPreview from './components/ExportPreview.vue';
 import { Fold, Expand, Picture, Grid, Download } from '@element-plus/icons-vue';
 
 const appStore = useAppStore();
+const {
+  editMode,
+  selectedTool,
+  selectedEditColor,
+  undoStack,
+  redoStack,
+  effectivePalette,
+  perlerColors,
+  selectedBrand
+} = storeToRefs(appStore);
+
+const brandPalette = computed(() => buildBrandPalette(perlerColors.value, selectedBrand.value));
+
 const previewSection = ref<InstanceType<typeof PreviewSection> | null>(null);
 const isCollapsed = ref(false);
 const activeTab = ref('original');
@@ -111,6 +127,22 @@ const downloadPattern = (): void => {
   link.download = 'perler-pattern.png';
   link.href = canvas.toDataURL('image/png');
   link.click();
+};
+
+const onEditSelectColor = (color: typeof selectedEditColor.value) => {
+  appStore.setSelectedEditColor(color);
+};
+
+const onEditFillAll = () => {
+  appStore.handleFillAll();
+};
+
+const onEditUndo = () => {
+  appStore.undo();
+};
+
+const onEditRedo = () => {
+  appStore.redo();
 };
 </script>
 
@@ -196,77 +228,30 @@ h1.title {
   box-sizing: border-box;
 }
 
-.edit-aside {
-  background-color: white;
-  border-left: 1px solid #e4e7ed;
-  padding: 20px;
-  overflow-y: auto;
-  box-shadow: -2px 0 12px 0 rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
+.root-container {
+  height: 100%;
+}
+
+.root-container>.el-container {
+  flex: 1;
+  min-height: 0;
+}
+
+.main-wrapper {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  height: 100%;
-  box-sizing: border-box;
-}
-
-.edit-panel {
-  width: 100%;
-}
-
-.edit-title {
-  margin-bottom: 12px;
-}
-
-.edit-card {
-  width: 100%;
-  border-radius: 12px;
-}
-
-.palette-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.palette-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid #e9edf3;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.palette-item.active {
-  border-color: #409eff;
-  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.12);
-}
-
-.palette-swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.edit-actions {
-  display: flex;
-  justify-content: flex-start;
-  margin-top: 16px;
+  min-width: 0;
 }
 
 .main {
   background: white;
-  border-radius: 8px;
-  margin: 16px;
+  margin: 16px 16px 0 16px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.08);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .main-tabs {
@@ -348,16 +333,6 @@ h1.title {
   padding: 0 4px;
 }
 
-.el-container {
-  height: 100%;
-  width: 100%;
-  min-height: 100%;
-}
-
-.el-container.is-vertical {
-  height: 100%;
-  min-height: 100%;
-}
 
 /* 自定义滚动条 */
 ::-webkit-scrollbar {
@@ -379,11 +354,13 @@ h1.title {
   background: #a8a8a8;
 }
 
-.pattern-editor-panel {
-  margin-top: 16px;
-}
-
-.pattern-editor-panel :deep(.palette-card) {
-  border-radius: 12px;
+.editor-footer {
+  flex-shrink: 0;
+  margin: 8px 16px 16px 16px;
+  padding: 10px 16px;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.06);
 }
 </style>

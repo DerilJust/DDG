@@ -1,282 +1,380 @@
 <template>
-    <el-card class="palette-card" shadow="hover">
-        <div class="card-header">
-            <el-icon class="title-icon">
-                <Brush />
-            </el-icon>
-            <span>颜色编辑</span>
-            <div class="edit-switch">
-                <span>编辑模式</span>
-                <el-switch v-model="localEditMode" />
+  <div class="editor-bar">
+    <div class="editor-row editor-tool-row">
+      <el-switch v-model="localEditMode" active-text="编辑" />
+
+      <span class="tool-sep"></span>
+
+      <el-button-group class="tool-group">
+        <el-button size="small" :icon="Brush" :type="localSelectedTool === 'brush' ? 'primary' : 'default'" @click="selectTool('brush')">画笔</el-button>
+        <el-button size="small" :icon="Pouring" :type="localSelectedTool === 'fill' ? 'primary' : 'default'" @click="selectTool('fill')">填充</el-button>
+        <el-button size="small" :icon="Delete" :type="localSelectedTool === 'eraser' ? 'primary' : 'default'" @click="selectTool('eraser')">橡皮</el-button>
+        <el-button size="small" :icon="Aim" :type="localSelectedTool === 'eyedropper' ? 'primary' : 'default'" @click="selectTool('eyedropper')">吸管</el-button>
+        <el-button size="small" :icon="Pointer" :type="localSelectedTool === 'pan' ? 'primary' : 'default'" @click="selectTool('pan')">手形</el-button>
+      </el-button-group>
+
+      <span class="tool-sep"></span>
+
+      <el-button size="small" :icon="RefreshLeft" @click="undo" :disabled="!canUndo">撤销</el-button>
+      <el-button size="small" :icon="RefreshRight" @click="redo" :disabled="!canRedo">重做</el-button>
+    </div>
+
+    <div class="editor-row editor-color-row">
+      <div class="current-color">
+        <div class="color-swatch" :style="{ backgroundColor: activeColorHex || '#fff' }"></div>
+        <span class="color-label">{{ activeColorHex || '未选择' }}</span>
+      </div>
+
+      <div class="palette-area">
+        <el-tabs v-model="activeTab" class="palette-tabs">
+          <el-tab-pane label="图纸颜色" name="drawing">
+            <div class="palette-strip">
+              <div v-for="item in activePalette" :key="item.code" class="palette-chip"
+                :class="{ active: item.color.hex === activeColorHex }"
+                @click="selectColor(item.color)"
+                :title="`${item.code} (${item.count}颗)`">
+                <div class="chip-swatch" :style="{ backgroundColor: item.color.hex }"></div>
+                <span class="chip-code">{{ item.code }}</span>
+              </div>
+              <div v-if="!activePalette.length" class="palette-empty-hint">
+                先生成图纸后即可选择颜色
+              </div>
             </div>
-        </div>
-
-        <div class="palette-description">
-            请选择当前颜色后直接点击或拖动绘制，Ctrl+滚轮缩放画布，滚轮上下移动视图。
-        </div>
-
-        <div v-if="activeColorHex" class="current-color-panel">
-            <div class="current-color-swatch" :style="{ backgroundColor: activeColorHex }"></div>
-            <div class="current-color-label">当前颜色: {{ activeColorHex }}</div>
-        </div>
-
-
-        <div class="tool-panel">
-            <el-button size="small" :type="localSelectedTool === 'brush' ? 'primary' : 'default'" @click="selectTool('brush')">画笔</el-button>
-            <el-button size="small" :type="localSelectedTool === 'fill' ? 'primary' : 'default'" @click="selectTool('fill')">填充</el-button>
-            <el-button size="small" :type="localSelectedTool === 'eraser' ? 'primary' : 'default'" @click="selectTool('eraser')">橡皮</el-button>
-            <el-button size="small" :type="localSelectedTool === 'eyedropper' ? 'primary' : 'default'" @click="selectTool('eyedropper')">吸管</el-button>
-            <el-button size="small" :type="localSelectedTool === 'pan' ? 'primary' : 'default'" @click="selectTool('pan')">手形</el-button>
-        </div>
-
-        <div v-if="palette.length" class="palette-grid">
-            <div v-for="item in palette" :key="item.code" class="palette-item"
-                :class="{ active: item.color.hex === activeColorHex }" @click="selectColor(item.color)">
-                <div class="swatch" :style="{ backgroundColor: item.color.hex }"></div>
-                <div class="palette-info">
-                    <div class="palette-code">{{ item.code }}</div>
-                    <div class="palette-count">{{ item.count }}颗</div>
+          </el-tab-pane>
+          <el-tab-pane label="全部颜色" name="brand">
+            <div class="palette-grid">
+              <div v-for="family in colorFamilies" :key="family.prefix" class="color-family">
+                <div class="family-label">{{ family.name }} <span class="family-prefix">({{ family.prefix }})</span></div>
+                <div class="family-chips">
+                  <div v-for="item in family.items" :key="item.code" class="palette-chip"
+                    :class="{ active: item.color.hex === activeColorHex }"
+                    @click="selectColor(item.color)"
+                    :title="item.code">
+                    <div class="chip-swatch" :style="{ backgroundColor: item.color.hex }"></div>
+                    <span class="chip-code">{{ item.code }}</span>
+                  </div>
                 </div>
+              </div>
             </div>
-        </div>
-        <div v-else class="palette-empty">
-            先生成图纸后即可选择可编辑颜色。
-        </div>
+          </el-tab-pane>
+        </el-tabs>
+      </div>
 
-        <div class="tool-footer">
-            <el-button size="small" @click="undo" :disabled="!canUndo">撤销</el-button>
-            <el-button size="small" @click="redo" :disabled="!canRedo">重做</el-button>
-        </div>
-
-        <div class="palette-footer">
-            <el-button type="primary" size="small" @click="fillAll" :disabled="!activeColorHex">
-                全部填充选中色
-            </el-button>
-        </div>
-    </el-card>
+      <el-button type="primary" size="small" class="fill-all-btn" @click="fillAll" :disabled="!activeColorHex">全部填充</el-button>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { Brush, Pouring, Delete, Aim, Pointer, RefreshLeft, RefreshRight } from '@element-plus/icons-vue';
 import type { PropType } from 'vue';
-import { Brush } from '@element-plus/icons-vue';
 import type { PerlerColor, PaletteItem, ColorInfo } from '../utils/patternUtils';
 
+const COLOR_FAMILY_MAP: Record<string, string> = {
+  'A': '黄色系',
+  'B': '绿色系',
+  'C': '浅色系',
+  'D': '蓝色系',
+  'E': '粉色系',
+  'F': '红色系',
+  'G': '橙色系',
+  'H': '灰白色系',
+  'M': '灰绿色系',
+  'P': '混色系',
+  'Q': '特殊色系',
+  'R': '红橙色系',
+  'T': '特殊色系',
+  'Y': '棕色系',
+  'ZG': '珠光色系',
+};
+
+interface ColorFamily {
+  prefix: string;
+  name: string;
+  items: PaletteItem[];
+}
+
 const props = defineProps({
-    palette: {
-        type: Array as PropType<PaletteItem[]>,
-        default: () => []
-    },
-    activeColor: {
-        type: Object as PropType<ColorInfo | null>,
-        default: null
-    },
-    editMode: {
-        type: Boolean,
-        default: false
-    },
-    selectedTool: {
-        type: String as PropType<'brush' | 'fill' | 'pan' | 'eraser' | 'eyedropper'>,
-        default: 'brush'
-    },
-    canUndo: {
-        type: Boolean,
-        default: false
-    },
-    canRedo: {
-        type: Boolean,
-        default: false
-    }
+  palette: {
+    type: Array as PropType<PaletteItem[]>,
+    default: () => []
+  },
+  brandPalette: {
+    type: Array as PropType<PaletteItem[]>,
+    default: () => []
+  },
+  activeColor: {
+    type: Object as PropType<ColorInfo | null>,
+    default: null
+  },
+  editMode: {
+    type: Boolean,
+    default: false
+  },
+  selectedTool: {
+    type: String as PropType<'brush' | 'fill' | 'pan' | 'eraser' | 'eyedropper'>,
+    default: 'brush'
+  },
+  canUndo: {
+    type: Boolean,
+    default: false
+  },
+  canRedo: {
+    type: Boolean,
+    default: false
+  }
 });
 const emit = defineEmits(['select', 'fill-all', 'update:editMode', 'update:selectedTool', 'undo', 'redo']);
 
 const activeColorHex = computed<string>(() => props.activeColor?.hex || '');
 const localEditMode = computed<boolean>({
-    get: () => props.editMode,
-    set: (val) => emit('update:editMode', val)
+  get: () => props.editMode,
+  set: (val) => emit('update:editMode', val)
 });
 const localSelectedTool = computed<'brush' | 'fill' | 'pan' | 'eraser' | 'eyedropper'>({
-    get: () => props.selectedTool,
-    set: (val) => emit('update:selectedTool', val)
+  get: () => props.selectedTool,
+  set: (val) => emit('update:selectedTool', val)
+});
+
+const activeTab = ref<'drawing' | 'brand'>('drawing');
+
+const activePalette = computed<PaletteItem[]>(() => {
+  if (!props.palette || !props.palette.length) return [];
+  return props.palette.filter(item => item.count > 0).slice(0, 40);
+});
+
+const colorFamilies = computed<ColorFamily[]>(() => {
+  const groups: Record<string, PaletteItem[]> = {};
+  for (const item of props.brandPalette) {
+    const prefix = item.code.replace(/[0-9]/g, '');
+    if (!groups[prefix]) groups[prefix] = [];
+    groups[prefix].push(item);
+  }
+  const order = Object.keys(COLOR_FAMILY_MAP);
+  return order
+    .filter(p => groups[p])
+    .map(p => ({
+      prefix: p,
+      name: COLOR_FAMILY_MAP[p],
+      items: groups[p]
+    }));
 });
 
 const selectTool = (tool: 'brush' | 'fill' | 'pan' | 'eraser' | 'eyedropper'): void => {
-    localSelectedTool.value = tool;
+  localSelectedTool.value = tool;
 };
 
 const selectColor = (color: PerlerColor): void => {
-    emit('select', color);
+  emit('select', color);
 };
 
 const fillAll = (): void => {
-    emit('fill-all');
+  emit('fill-all');
 };
 
 const undo = (): void => {
-    emit('undo');
+  emit('undo');
 };
 
 const redo = (): void => {
-    emit('redo');
+  emit('redo');
 };
 </script>
 
 <style scoped>
-.palette-card {
-    width: 100%;
-    border-radius: 12px;
+.editor-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
 }
 
-.card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    font-size: 16px;
-    font-weight: bold;
-    color: #303133;
-    padding: 16px 20px;
-    background: linear-gradient(135deg, #f6f8fa 0%, #e9ecef 100%);
-    border-bottom: 1px solid #e4e7ed;
+.editor-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
 }
 
-.edit-switch {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #606266;
-    font-size: 14px;
+.editor-tool-row {
+  flex-shrink: 0;
 }
 
-.title-icon {
-    font-size: 18px;
-    color: #409eff;
+.editor-color-row {
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
 }
 
-.palette-description {
-    padding: 16px 20px;
-    color: #606266;
-    font-size: 14px;
-    border-bottom: 1px solid #e8edf3;
+.palette-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.mode-panel {
-    display: flex;
-    gap: 10px;
-    padding: 16px 20px;
-    background: #ffffff;
-    border-bottom: 1px solid #e8edf3;
+.current-color {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 3px;
 }
 
-.mode-button {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: #606266;
-    border: 1px solid transparent;
+.color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
 }
 
-.mode-button.active {
-    color: #409eff;
-    border-color: #409eff;
-    background-color: rgba(64, 158, 255, 0.08);
+.color-label {
+  font-size: 13px;
+  color: #606266;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tool-group {
+  display: flex;
+}
+
+.tool-sep {
+  width: 1px;
+  height: 20px;
+  background: #dcdfe6;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.palette-tabs {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.palette-tabs :deep(.el-tabs__header) {
+  margin-bottom: 2px;
+}
+.palette-tabs :deep(.el-tabs__item) {
+  font-size: 13px;
+  height: 28px;
+  line-height: 28px;
+  padding: 0 12px;
+}
+.palette-tabs :deep(.el-tabs__nav-wrap::after) {
+  display: none;
+}
+
+.palette-tabs :deep(.el-tabs__content) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.palette-tabs :deep(.el-tab-pane) {
+  height: 100%;
+}
+
+.palette-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
+  align-content: flex-start;
+}
+
+.palette-strip::-webkit-scrollbar {
+  width: 4px;
 }
 
 .palette-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    padding: 16px 20px 0;
+  height: 100%;
+  overflow-y: auto;
+  padding: 4px 0;
 }
 
-.palette-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    border: 1px solid #e9edf3;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: #fff;
+.palette-grid::-webkit-scrollbar {
+  width: 4px;
 }
 
-.palette-item.active {
-    border-color: #409eff;
-    box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.12);
+.color-family {
+  margin-bottom: 8px;
 }
 
-.palette-item:hover {
-    transform: translateY(-1px);
+.family-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #606266;
+  margin-bottom: 4px;
+  padding-left: 2px;
 }
 
-.swatch {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.08);
+.family-prefix {
+  font-weight: 400;
+  color: #909399;
+  font-size: 11px;
 }
 
-.palette-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+.family-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
-.palette-code {
-    color: #303133;
-    font-weight: 600;
+.palette-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid #e9edf3;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
 }
 
-.palette-count {
-    color: #909399;
-    font-size: 13px;
+.palette-chip:hover {
+  background: #f5f7fa;
 }
 
-.palette-empty {
-    padding: 20px;
-    color: #909399;
-    text-align: center;
+.palette-chip.active {
+  border-color: #409eff;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.15);
 }
 
-.palette-footer {
-    padding: 16px 20px 20px;
+.chip-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.current-color-panel {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px 20px;
-    background: #fff;
-    border-bottom: 1px solid #e8edf3;
+.chip-code {
+  font-size: 12px;
+  color: #303133;
+  font-weight: 600;
 }
 
-.current-color-swatch {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.08);
+.palette-empty-hint {
+  font-size: 13px;
+  color: #909399;
+  padding: 4px 0;
+  white-space: nowrap;
 }
 
-.current-color-label {
-    color: #303133;
-    font-weight: 600;
+.fill-all-btn {
+  flex-shrink: 0;
+  align-self: flex-end;
+  margin-bottom: 3px;
 }
 
-.tool-panel {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 16px 20px;
-    background: #ffffff;
-    border-bottom: 1px solid #e8edf3;
-}
 
-.tool-footer {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 16px 20px 0;
-}
 </style>
