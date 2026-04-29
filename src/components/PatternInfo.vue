@@ -106,7 +106,6 @@ const { infoText, colorStats } = storeToRefs(appStore);
 }
 
 .info-alert {
-  margin: 16px;
   border-radius: 8px;
 }
 

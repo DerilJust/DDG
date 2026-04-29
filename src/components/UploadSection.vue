@@ -8,14 +8,7 @@
     </h3>
     <el-card class="upload-card" shadow="hover">
       <div class="upload-content">
-        <el-upload class="upload-demo" :auto-upload="false" :on-change="handleFileChange" :show-file-list="false"
-          accept="image/*">
-          <el-button type="primary" size="large" class="upload-btn" :icon="UploadFilled">
-            选择图片
-          </el-button>
-        </el-upload>
-        <el-button type="success" size="large" class="upload-btn" @click="showCropper" :disabled="!originalImage"
-          :icon="Check">
+        <el-button type="success" size="large" class="upload-btn" @click="uploadDialogVisible = true" :icon="Check">
           上传并裁剪
         </el-button>
       </div>
@@ -35,92 +28,31 @@
     </el-card>
   </div>
 
-  <CropperDialog :visible="cropperVisible" :image-data="imageData" @update:visible="cropperVisible = $event"
-    @upload="handleImageUploaded" />
+  <UploadDialog :visible="uploadDialogVisible" @update:visible="uploadDialogVisible = $event"
+    @confirm="handleUploadConfirm" />
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { UploadFilled, Check, Picture } from '@element-plus/icons-vue';
-import CropperDialog from './CropperDialog.vue';
+import UploadDialog from './UploadDialog.vue';
 import { useAppStore } from '../store/appStore';
-import type { CropperImageData, SelectedImageData, UploadedCropResult } from '../types';
+import type { UploadedCropResult } from '../types';
 
 const appStore = useAppStore();
 const { originalImageUrl } = storeToRefs(appStore);
 
-/** 裁剪所需的图片数据 */
-const imageData = ref<CropperImageData | null>(null);
-const originalImage = ref<File | null>(null);
 const previewUrl = ref<string>(originalImageUrl.value || '');
 
 watch(originalImageUrl, (value: string) => {
   previewUrl.value = value;
 });
 
-// 处理文件选择
-const handleFileChange = (file: { raw: File }) => {
-  originalImage.value = file.raw;
-  const reader = new FileReader();
-  reader.onload = (e: ProgressEvent<FileReader>) => {
-    if (e.target?.result && typeof e.target.result === 'string') {
-      previewUrl.value = e.target.result;
-    }
-  };
-  reader.readAsDataURL(file.raw);
-};
+const uploadDialogVisible = ref<boolean>(false);
 
-// 显示裁剪器
-const showCropper = (): void => {
-  if (!originalImage.value) {
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = (e: ProgressEvent<FileReader>) => {
-    if (e.target?.result && typeof e.target.result === 'string') {
-      previewUrl.value = e.target.result;
-      const img = new Image();
-      const imageUrl = e.target.result;
-      img.onload = () => {
-        handleImageSelected({
-          imageData: img,
-          imageUrl: imageUrl
-        });
-      };
-      img.src = imageUrl;
-    }
-  };
-  reader.readAsDataURL(originalImage.value);
-};
-
-/** 图片裁剪对话框的可见性 */
-const cropperVisible = ref<boolean>(false);
-
-const handleImageUploaded = (data: UploadedCropResult) => {
-  originalImage.value = data.file;
+const handleUploadConfirm = (data: UploadedCropResult) => {
   previewUrl.value = data.url;
-  appStore.setOriginalImage(data.file);
-  appStore.setOriginalImageUrl(data.url);
-  appStore.setInfoText('图片已上传');
-  appStore.setOriginalImageSize(data.width, data.height);
-  appStore.setGridSizeByImageRatio(data.width, data.height);
-};
-
-// 处理图片选择（用于裁剪）
-const handleImageSelected = (data: SelectedImageData) => {
-  imageData.value = {
-    offsetX: 0,
-    offsetY: 0,
-    displayWidth: data.imageData.width,
-    displayHeight: data.imageData.height,
-    displayScaleX: 1,
-    displayScaleY: 1,
-    image: data.imageData
-  };
-  previewUrl.value = data.imageUrl;
-  cropperVisible.value = true;
 };
 
 </script>

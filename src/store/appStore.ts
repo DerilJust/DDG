@@ -38,7 +38,7 @@ export const useAppStore = defineStore('app', {
     colorCount: 20,
     selectedBrand: 'MARD',
     showNumbers: false,
-    lockAspectRatio: false,
+    lockAspectRatio: true,
     infoText: '请上传图片并生成图纸',
     perlerColors: [],
     patternGrid: createBlankGrid(30, 30),

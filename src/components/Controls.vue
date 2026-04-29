@@ -108,62 +108,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
 import { useAppStore } from '../store/appStore';
 import { storeToRefs } from 'pinia';
-import { gcd } from '../utils/patternUtils';
+import { useAspectRatioLock } from '../composables/useAspectRatioLock';
 import { MagicStick, Download, Setting } from '@element-plus/icons-vue';
 
 const emit = defineEmits(['download']);
 const appStore = useAppStore();
-const { gridWidth, gridHeight, colorCount, selectedBrand, showNumbers, lockAspectRatio, originalImageSize } = storeToRefs(appStore);
+const { gridWidth, gridHeight, colorCount, selectedBrand, showNumbers, lockAspectRatio } = storeToRefs(appStore);
 
-const ratioLocking = ref(false);
-
-watch(gridWidth, (newWidth) => {
-  if (!lockAspectRatio.value || ratioLocking.value) return;
-  ratioLocking.value = true;
-  
-  // 解析比例并计算宽高比
-  const ratioParts = imageRatio.value.split(':');
-  if (ratioParts.length === 2) {
-    const widthRatio = Number(ratioParts[0]);
-    const heightRatio = Number(ratioParts[1]);
-    const aspectRatio = widthRatio / heightRatio;
-    
-    // 根据宽高比计算新的高度
-    const newHeight = Math.max(1, Math.round(newWidth / aspectRatio));
-    appStore.setGridHeight(newHeight);
-  }
-  
-  ratioLocking.value = false;
-});
-
-watch(gridHeight, (newHeight) => {
-  if (!lockAspectRatio.value || ratioLocking.value) return;
-  ratioLocking.value = true;
-  
-  // 解析比例并计算宽高比
-  const ratioParts = imageRatio.value.split(':');
-  if (ratioParts.length === 2) {
-    const widthRatio = Number(ratioParts[0]);
-    const heightRatio = Number(ratioParts[1]);
-    const aspectRatio = widthRatio / heightRatio;
-    
-    // 根据宽高比计算新的宽度
-    const newWidth = Math.max(1, Math.round(newHeight * aspectRatio));
-    appStore.setGridWidth(newWidth);
-  }
-  
-  ratioLocking.value = false;
-});
-
-const imageRatio = computed<string>(() => {
-  const { width, height } = originalImageSize.value;
-  if (!width || !height) return '暂无图片';
-  const ratio = gcd(width, height);
-  return `${width / ratio}:${height / ratio}`;
-});
+const { imageRatio } = useAspectRatioLock();
 
 const generatePattern = (): void => {
   appStore.generatePattern();
