@@ -94,6 +94,15 @@
           </div>
         </div>
 
+        <div v-if="localImageData" class="preset-ratio-section">
+          <span class="preset-label">裁剪比例：</span>
+          <el-button-group>
+            <el-button size="small" :type="activePreset === '1:1' ? 'primary' : 'default'" @click="applyPresetRatio('1:1', 1)">1:1</el-button>
+            <el-button size="small" :type="activePreset === '4:3' ? 'primary' : 'default'" @click="applyPresetRatio('4:3', 4/3)">4:3</el-button>
+            <el-button size="small" :type="activePreset === '16:9' ? 'primary' : 'default'" @click="applyPresetRatio('16:9', 16/9)">16:9</el-button>
+          </el-button-group>
+        </div>
+
         <el-slider v-if="localImageData" v-model="zoomLevel" :min="10" :max="200" :step="10" show-input
           class="zoom-slider" @input="drawImage">
           <template #prefix>缩放: </template>
@@ -146,6 +155,7 @@ const localImageData = ref<CropperImageData | null>(null);
 const zoomLevel = ref<number>(100);
 const selectedFile = ref<File | null>(null);
 const isProcessing = ref<boolean>(false);
+const activePreset = ref<string | null>(null);
 
 const cropRect = ref<{
   x: number;
@@ -322,6 +332,57 @@ const initCropRect = (): void => {
   }
 };
 
+const applyPresetRatio = (name: string, ratio: number): void => {
+  if (!localImageData.value) return;
+
+  activePreset.value = name;
+
+  const displayWidth = localImageData.value.displayWidth;
+  const displayHeight = localImageData.value.displayHeight;
+  const offsetX = localImageData.value.offsetX;
+  const offsetY = localImageData.value.offsetY;
+  const padding = 0.8;
+
+  let cropW: number, cropH: number;
+
+  if (ratio >= 1) {
+    cropW = Math.min(displayWidth * padding, displayHeight * padding * ratio);
+    cropH = cropW / ratio;
+    if (cropH > displayHeight * padding) {
+      cropH = displayHeight * padding;
+      cropW = cropH * ratio;
+    }
+  } else {
+    cropH = Math.min(displayHeight * padding, displayWidth * padding / ratio);
+    cropW = cropH * ratio;
+    if (cropW > displayWidth * padding) {
+      cropW = displayWidth * padding;
+      cropH = cropW / ratio;
+    }
+  }
+
+  cropW = Math.max(20, cropW);
+  cropH = Math.max(20, cropH);
+
+  cropRect.value = {
+    x: offsetX + (displayWidth - cropW) / 2,
+    y: offsetY + (displayHeight - cropH) / 2,
+    width: cropW,
+    height: cropH,
+    visible: true,
+    dragging: false,
+    resizing: false,
+    resizeDirection: ''
+  };
+
+  const currentMax = Math.max(gridWidth.value, gridHeight.value);
+  if (ratio >= 1) {
+    appStore.setGridHeight(Math.max(1, Math.round(currentMax / ratio)));
+  } else {
+    appStore.setGridWidth(Math.max(1, Math.round(currentMax * ratio)));
+  }
+};
+
 const startDrag = (e: PointerEvent) => {
   if (!cropRect.value.visible) return;
   e.preventDefault();
@@ -346,6 +407,7 @@ const handlePointerMove = (e: PointerEvent) => {
     const dy = y - start.y;
     cropRect.value.x = originalCropRect.value.x + dx;
     cropRect.value.y = originalCropRect.value.y + dy;
+    activePreset.value = null;
     constrainCropRect();
   } else if (cropRect.value.resizing) {
     handleResize(x, y);
@@ -460,6 +522,7 @@ const handleResize = (mouseX: number, mouseY: number) => {
   cropRect.value.width = newWidth;
   cropRect.value.height = newHeight;
   constrainCropRect();
+  activePreset.value = null;
   mouseStartPos.value = { x: mouseX, y: mouseY };
   originalCropRect.value = { ...cropRect.value };
 };
@@ -704,6 +767,19 @@ const handleConfirm = async () => {
 .crop-handle.bottom:hover { transform: translateX(-50%) scale(1.2); }
 .crop-handle.left:hover { transform: translateY(-50%) scale(1.2); }
 .crop-handle.right:hover { transform: translateY(-50%) scale(1.2); }
+
+.preset-ratio-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.preset-label {
+  font-size: 13px;
+  color: #606266;
+  font-weight: 500;
+  white-space: nowrap;
+}
 
 .zoom-slider {
   width: 100%;

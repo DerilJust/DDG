@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx vue-tsc *)"
+      "Bash(npx vue-tsc *)",
+      "Bash(git -C /c/Users/fogwan/Desktop/github/koishi-plugin-satori-ai/DDG log --oneline -10)",
+      "Read(//c/Users/fogwan/.claude/plans//**)",
+      "Bash(git -C \"/c/Users/fogwan/Desktop/github/koishi-plugin-satori-ai/DDG\" log --oneline -10)",
+      "Bash(npm run *)"
     ]
   }
 }
