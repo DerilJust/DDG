@@ -149,10 +149,10 @@ export function drawPatternToCanvas(
 
   if (!patternGrid.length || !patternGrid[0]) return;
 
-  canvas.width = gridWidth * cellSize + axisMargin * 2;
-  canvas.height = gridHeight * cellSize + axisMargin * 2;
+  const pw = gridWidth * cellSize + axisMargin * 2;
+  const ph = gridHeight * cellSize + axisMargin * 2;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, pw, ph);
 
   for (let y = 0; y < gridHeight; y++) {
     for (let x = 0; x < gridWidth; x++) {
@@ -200,14 +200,14 @@ export function drawPatternToCanvas(
   for (let i = 0; i <= gridWidth; i++) {
     if (i % 5 !== 0) { // 不是 5 的倍数才画细线
       ctx.moveTo(i * cellSize + offset, 0);
-      ctx.lineTo(i * cellSize + offset, canvas.height);
+      ctx.lineTo(i * cellSize + offset, ph);
     }
   }
   // 画水平方向的细线
   for (let j = 0; j <= gridHeight; j++) {
     if (j % 5 !== 0) { // 不是 5 的倍数才画细线
       ctx.moveTo(0, j * cellSize + offset);
-      ctx.lineTo(canvas.width, j * cellSize + offset);
+      ctx.lineTo(pw, j * cellSize + offset);
     }
   }
   ctx.stroke();
@@ -221,26 +221,27 @@ export function drawPatternToCanvas(
   for (let i = 0; i <= gridWidth; i++) {
     if (i % 5 === 0) { // 是 5 的倍数，画粗线
       ctx.moveTo(i * cellSize + offset, 0);
-      ctx.lineTo(i * cellSize + offset, canvas.height);
+      ctx.lineTo(i * cellSize + offset, ph);
     }
   }
   // 画水平方向的粗线
   for (let j = 0; j <= gridHeight; j++) {
     if (j % 5 === 0) { // 是 5 的倍数，画粗线
       ctx.moveTo(0, j * cellSize + offset);
-      ctx.lineTo(canvas.width, j * cellSize + offset);
+      ctx.lineTo(pw, j * cellSize + offset);
     }
   }
   ctx.stroke(); // 一次性画出所有粗线
 
   if (showNumbers) {
-    drawAxisLabels(ctx, canvas, gridWidth, gridHeight, cellSize, axisMargin);
+    drawAxisLabels(ctx, pw, ph, gridWidth, gridHeight, cellSize, axisMargin);
   }
 }
 
 function drawAxisLabels(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  pw: number,
+  ph: number,
   gridWidth: number,
   gridHeight: number,
   cellSize: number,
@@ -249,18 +250,18 @@ function drawAxisLabels(
   ctx.save();
 
   ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, canvas.width, axisMargin);
-  ctx.fillRect(0, 0, axisMargin, canvas.height);
-  ctx.fillRect(0, canvas.height - axisMargin, canvas.width, axisMargin);
-  ctx.fillRect(canvas.width - axisMargin, 0, axisMargin, canvas.height);
+  ctx.fillRect(0, 0, pw, axisMargin);
+  ctx.fillRect(0, 0, axisMargin, ph);
+  ctx.fillRect(0, ph - axisMargin, pw, axisMargin);
+  ctx.fillRect(pw - axisMargin, 0, axisMargin, ph);
 
   ctx.strokeStyle = '#666';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(axisMargin, axisMargin);
-  ctx.lineTo(axisMargin, canvas.height - axisMargin);
+  ctx.lineTo(axisMargin, ph - axisMargin);
   ctx.moveTo(axisMargin, axisMargin);
-  ctx.lineTo(canvas.width - axisMargin, axisMargin);
+  ctx.lineTo(pw - axisMargin, axisMargin);
   ctx.stroke();
 
   ctx.fillStyle = '#333';
@@ -274,7 +275,7 @@ function drawAxisLabels(
       const label = `${i + 1}`;
       const x = axisMargin + i * cellSize + cellSize / 2;
       const topY = axisMargin / 2;
-      const bottomY = canvas.height - axisMargin / 2;
+      const bottomY = ph - axisMargin / 2;
 
       ctx.textAlign = 'center';
       ctx.fillText(label, x, topY);
@@ -287,7 +288,7 @@ function drawAxisLabels(
       const label = `${i + 1}`;
       const y = axisMargin + i * cellSize + cellSize / 2;
       const leftX = axisMargin / 2;
-      const rightX = canvas.width - axisMargin / 2;
+      const rightX = pw - axisMargin / 2;
 
       ctx.textAlign = 'right';
       ctx.fillText(label, leftX, y);

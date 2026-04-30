@@ -1,28 +1,20 @@
 <template>
   <div class="preview-section">
     <div class="canvas-wrapper">
-      <div class="canvas-container" ref="containerRef"
-        @wheel.prevent="handleWheel"
-        @mousedown="handleMouseDown"
-        @mousemove="handleMouseMove"
-        @mouseup="handleMouseUp"
-        @mouseleave="handleMouseUp"
+      <div class="canvas-container" ref="containerRef" @wheel.prevent="handleWheel" @mousedown="handleMouseDown"
+        @mousemove="handleMouseMove" @mouseup="handleMouseUp" @mouseleave="handleMouseUp"
         :style="{ cursor: isDragging ? 'grabbing' : 'grab' }">
 
-        <div :style="transformStyle">
-          <canvas ref="patternCanvas" id="pattern-canvas" class="pattern-canvas"
-            @pointerdown.stop="handleCanvasPointerDown"
-            @pointermove="handleCanvasPointerMove"
-            @pointerup="handleCanvasPointerUp"
-            @pointerleave="handleCanvasPointerUp">
-          </canvas>
-        </div>
+        <canvas ref="patternCanvas" id="pattern-canvas" class="pattern-canvas"
+          @pointerdown.stop="handleCanvasPointerDown" @pointermove="handleCanvasPointerMove"
+          @pointerup="handleCanvasPointerUp" @pointerleave="handleCanvasPointerUp">
+        </canvas>
 
-        <div v-if="selectedCell" class="selection-overlay" :style="selectedCellStyle"></div>
+        <div v-if="selectionStart" class="selection-overlay" :style="selectionOverlayStyle"></div>
 
         <div class="floating-controls">
           <el-button size="small" circle @click="zoomOut" title="缩小">-</el-button>
-          <span class="zoom-display">{{ Math.round(scale * 100) }}%</span>
+          <span class="zoom-display">{{ Math.round(viewScale * 100) }}%</span>
           <el-button size="small" circle @click="zoomIn" title="放大">+</el-button>
           <el-button size="small" @click="resetViewport" title="重置视图">重置</el-button>
         </div>
@@ -32,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useAppStore } from '../store/appStore';
 import { storeToRefs } from 'pinia';
 
@@ -47,58 +39,128 @@ interface Point {
 const appStore = useAppStore();
 const { gridWidth, gridHeight, patternGrid, editMode, showNumbers } = storeToRefs(appStore);
 
-/** 缩放倍数 */
-const scale = ref<number>(1);
-/** X轴平移偏移量 */
-const offsetX = ref<number>(0);
-/** Y轴平移偏移量 */
-const offsetY = ref<number>(0);
-/** 是否正在拖拽 */
+const viewScale = ref<number>(1);
+const viewOffsetX = ref<number>(0);
+const viewOffsetY = ref<number>(0);
 const isDragging = ref<boolean>(false);
 const dragStartX = ref<number>(0);
 const dragStartY = ref<number>(0);
 const patternCanvas = ref<HTMLCanvasElement | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
 const pointerDown = ref<boolean>(false);
-const selectedCell = ref<Point | null>(null);
+const selectionStart = ref<Point | null>(null);
+const selectionEnd = ref<Point | null>(null);
+
+let rafId: number | null = null;
 
 const cellSize = computed(() => (showNumbers.value ? 40 : 20));
 const axisMargin = computed(() => (showNumbers.value ? 44 : 12));
 
-const transformStyle = computed(() => ({
-  transform: `translate(${offsetX.value}px, ${offsetY.value}px) scale(${scale.value})`,
-  transformOrigin: '0 0',
-  transition: 'none'
-}));
+const getDisplayScale = (): { x: number; y: number } => {
+  return { x: viewScale.value, y: viewScale.value };
+};
 
-const selectedCellStyle = computed<Record<string, string>>(() => {
-  if (!selectedCell.value) return { left: '0px', top: '0px', width: '0px', height: '0px' };
-  const displayScale = getDisplayScale();
+const initCanvasSize = (): void => {
+  if (!patternCanvas.value || !containerRef.value) return;
+  const cw = containerRef.value.clientWidth;
+  const ch = containerRef.value.clientHeight;
+  if (cw > 0 && ch > 0) {
+    patternCanvas.value.width = cw;
+    patternCanvas.value.height = ch;
+  }
+};
+
+const scheduleRedraw = (): void => {
+  if (rafId !== null) return;
+  rafId = requestAnimationFrame(() => {
+    rafId = null;
+    if (patternGrid.value.length) {
+      drawPattern();
+    } else {
+      drawPlaceholder();
+    }
+  });
+};
+
+const drawPlaceholder = (): void => {
+  if (!patternCanvas.value) return;
+  const ctx = patternCanvas.value.getContext('2d');
+  if (!ctx) return;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, patternCanvas.value.width, patternCanvas.value.height);
+  ctx.fillStyle = '#dcdfe6';
+  ctx.font = '16px "Microsoft YaHei", Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('请先生成拼豆图纸', patternCanvas.value.width / 2, patternCanvas.value.height / 2);
+};
+
+const drawPattern = (): void => {
+  if (!patternCanvas.value || !patternGrid.value.length) return;
+  const ctx = patternCanvas.value.getContext('2d');
+  if (!ctx) return;
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, patternCanvas.value.width, patternCanvas.value.height);
+
+  ctx.setTransform(viewScale.value, 0, 0, viewScale.value, viewOffsetX.value, viewOffsetY.value);
+
+  drawPatternToCanvas(ctx, patternCanvas.value, patternGrid.value, {
+    gridWidth: gridWidth.value,
+    gridHeight: gridHeight.value,
+    cellSize: cellSize.value,
+    axisMargin: axisMargin.value,
+    showNumbers: showNumbers.value,
+    gridLineInterval: 5
+  });
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+};
+
+const fitToContainer = (): void => {
+  if (!containerRef.value) return;
+  const cw = containerRef.value.clientWidth;
+  const ch = containerRef.value.clientHeight;
+  const pw = gridWidth.value * cellSize.value + axisMargin.value * 2;
+  const ph = gridHeight.value * cellSize.value + axisMargin.value * 2;
+  if (!pw || !ph || !cw || !ch) return;
+
+  viewScale.value = Math.min(cw / pw, ch / ph);
+  viewScale.value = Math.max(0.5, Math.min(3, viewScale.value));
+  viewOffsetX.value = (cw - pw * viewScale.value) / 2;
+  viewOffsetY.value = (ch - ph * viewScale.value) / 2;
+};
+
+const selectionOverlayStyle = computed<Record<string, string>>(() => {
+  if (!selectionStart.value) return { display: 'none', left: '0', top: '0', width: '0', height: '0' };
+  const end = selectionEnd.value || selectionStart.value;
+  const minX = Math.min(selectionStart.value.x, end.x);
+  const minY = Math.min(selectionStart.value.y, end.y);
+  const maxX = Math.max(selectionStart.value.x, end.x);
+  const maxY = Math.max(selectionStart.value.y, end.y);
+
+  const left = viewOffsetX.value + viewScale.value * (axisMargin.value + minX * cellSize.value);
+  const top = viewOffsetY.value + viewScale.value * (axisMargin.value + minY * cellSize.value);
+  const width = viewScale.value * (maxX - minX + 1) * cellSize.value;
+  const height = viewScale.value * (maxY - minY + 1) * cellSize.value;
+
   return {
-    left: `${(axisMargin.value + selectedCell.value.x * cellSize.value) * displayScale.x * scale.value + offsetX.value}px`,
-    top: `${(axisMargin.value + selectedCell.value.y * cellSize.value) * displayScale.y * scale.value + offsetY.value}px`,
-    width: `${cellSize.value * displayScale.x * scale.value}px`,
-    height: `${cellSize.value * displayScale.y * scale.value}px`
+    display: 'block',
+    left: `${left}px`,
+    top: `${top}px`,
+    width: `${width}px`,
+    height: `${height}px`
   };
 });
-
-const getDisplayScale = (): { x: number; y: number } => {
-  if (!patternCanvas.value) return { x: 1, y: 1 };
-  const rect = patternCanvas.value.getBoundingClientRect();
-  return {
-    x: patternCanvas.value.width ? rect.width / patternCanvas.value.width : 1,
-    y: patternCanvas.value.height ? rect.height / patternCanvas.value.height : 1
-  };
-};
 
 const getCanvasPointerPos = (e: PointerEvent): { x: number; y: number } => {
   if (!patternCanvas.value) return { x: 0, y: 0 };
   const rect = patternCanvas.value.getBoundingClientRect();
-  const scaleX = patternCanvas.value.width / rect.width;
-  const scaleY = patternCanvas.value.height / rect.height;
+  const canvasX = e.clientX - rect.left;
+  const canvasY = e.clientY - rect.top;
   return {
-    x: (e.clientX - rect.left) * scaleX,
-    y: (e.clientY - rect.top) * scaleY
+    x: (canvasX - viewOffsetX.value) / viewScale.value,
+    y: (canvasY - viewOffsetY.value) / viewScale.value
   };
 };
 
@@ -113,30 +175,33 @@ const getGridCell = (e: PointerEvent): Point | null => {
 const handleWheel = (e: WheelEvent) => {
   if (e.ctrlKey || e.metaKey) {
     const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-    const newScale = Math.max(0.5, Math.min(3, scale.value * zoomFactor));
+    const newScale = Math.max(0.5, Math.min(3, viewScale.value * zoomFactor));
     if (!containerRef.value) return;
     const rect = containerRef.value.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-    offsetX.value = mouseX - (mouseX - offsetX.value) * (newScale / scale.value);
-    offsetY.value = mouseY - (mouseY - offsetY.value) * (newScale / scale.value);
-    scale.value = newScale;
+    viewOffsetX.value = mouseX - (mouseX - viewOffsetX.value) * (newScale / viewScale.value);
+    viewOffsetY.value = mouseY - (mouseY - viewOffsetY.value) * (newScale / viewScale.value);
+    viewScale.value = newScale;
+    scheduleRedraw();
     return;
   }
-  offsetY.value -= e.deltaY;
+  viewOffsetY.value -= e.deltaY;
+  scheduleRedraw();
 };
 
 const handleMouseDown = (e: MouseEvent) => {
   if (editMode.value) return;
   isDragging.value = true;
-  dragStartX.value = e.clientX - offsetX.value;
-  dragStartY.value = e.clientY - offsetY.value;
+  dragStartX.value = e.clientX - viewOffsetX.value;
+  dragStartY.value = e.clientY - viewOffsetY.value;
 };
 
 const handleMouseMove = (e: MouseEvent) => {
   if (isDragging.value) {
-    offsetX.value = e.clientX - dragStartX.value;
-    offsetY.value = e.clientY - dragStartY.value;
+    viewOffsetX.value = e.clientX - dragStartX.value;
+    viewOffsetY.value = e.clientY - dragStartY.value;
+    scheduleRedraw();
   }
 };
 
@@ -150,8 +215,8 @@ const handleCanvasPointerDown = (e: PointerEvent) => {
   const cell = getGridCell(e);
   if (!cell || !cell.inGrid) return;
   pointerDown.value = true;
-  selectedCell.value = { x: cell.x, y: cell.y };
-  appStore.setPendingSelection({ type: 'cell', x: cell.x, y: cell.y });
+  selectionStart.value = { x: cell.x, y: cell.y };
+  selectionEnd.value = { x: cell.x, y: cell.y };
   if (patternCanvas.value.setPointerCapture) {
     patternCanvas.value.setPointerCapture(e.pointerId);
   }
@@ -161,60 +226,80 @@ const handleCanvasPointerMove = (e: PointerEvent) => {
   if (!editMode.value || !pointerDown.value) return;
   e.preventDefault();
   const cell = getGridCell(e);
-  if (!cell || !cell.inGrid) return;
-  if (selectedCell.value?.x === cell.x && selectedCell.value?.y === cell.y) return;
-  selectedCell.value = { x: cell.x, y: cell.y };
-  appStore.setPendingSelection({ type: 'cell', x: cell.x, y: cell.y });
+  if (!cell) return;
+  const clampedX = Math.max(0, Math.min(gridWidth.value - 1, cell.x));
+  const clampedY = Math.max(0, Math.min(gridHeight.value - 1, cell.y));
+  if (selectionEnd.value?.x === clampedX && selectionEnd.value?.y === clampedY) return;
+  selectionEnd.value = { x: clampedX, y: clampedY };
 };
 
 const handleCanvasPointerUp = (e: PointerEvent) => {
-  if (!editMode.value) return;
+  if (!editMode.value || !selectionStart.value) return;
   pointerDown.value = false;
   if (patternCanvas.value && e?.pointerId != null && patternCanvas.value.releasePointerCapture) {
     patternCanvas.value.releasePointerCapture(e.pointerId);
   }
+
+  const start = selectionStart.value;
+  const end = selectionEnd.value || start;
+
+  if (start.x === end.x && start.y === end.y) {
+    appStore.setPendingSelection({ type: 'cell', x: start.x, y: start.y });
+  } else {
+    appStore.setPendingSelection({ type: 'area', x1: start.x, y1: start.y, x2: end.x, y2: end.y });
+  }
+
+  selectionStart.value = null;
+  selectionEnd.value = null;
 };
 
 const resetViewport = (): void => {
-  scale.value = 1;
-  offsetX.value = 0;
-  offsetY.value = 0;
+  fitToContainer();
+  scheduleRedraw();
 };
 
 const zoomIn = (): void => {
-  const newScale = Math.min(3, scale.value + 0.1);
+  const newScale = Math.min(3, viewScale.value + 0.1);
   if (!containerRef.value) {
-    scale.value = newScale;
+    viewScale.value = newScale;
+    scheduleRedraw();
     return;
   }
   const rect = containerRef.value.getBoundingClientRect();
-  const mouseX = rect.width / 2;
-  const mouseY = rect.height / 2;
-  offsetX.value = mouseX - (mouseX - offsetX.value) * (newScale / scale.value);
-  offsetY.value = mouseY - (mouseY - offsetY.value) * (newScale / scale.value);
-  scale.value = newScale;
+  const cx = rect.width / 2;
+  const cy = rect.height / 2;
+  viewOffsetX.value = cx - (cx - viewOffsetX.value) * (newScale / viewScale.value);
+  viewOffsetY.value = cy - (cy - viewOffsetY.value) * (newScale / viewScale.value);
+  viewScale.value = newScale;
+  scheduleRedraw();
 };
 
 const zoomOut = (): void => {
-  const newScale = Math.max(0.5, scale.value - 0.1);
+  const newScale = Math.max(0.5, viewScale.value - 0.1);
   if (!containerRef.value) {
-    scale.value = newScale;
+    viewScale.value = newScale;
+    scheduleRedraw();
     return;
   }
   const rect = containerRef.value.getBoundingClientRect();
-  const mouseX = rect.width / 2;
-  const mouseY = rect.height / 2;
-  offsetX.value = mouseX - (mouseX - offsetX.value) * (newScale / scale.value);
-  offsetY.value = mouseY - (mouseY - offsetY.value) * (newScale / scale.value);
-  scale.value = newScale;
+  const cx = rect.width / 2;
+  const cy = rect.height / 2;
+  viewOffsetX.value = cx - (cx - viewOffsetX.value) * (newScale / viewScale.value);
+  viewOffsetY.value = cy - (cy - viewOffsetY.value) * (newScale / viewScale.value);
+  viewScale.value = newScale;
+  scheduleRedraw();
 };
 
-const drawPattern = (): void => {
-  if (!patternCanvas.value || !patternGrid.value.length) return;
-  const ctx = patternCanvas.value.getContext('2d');
-  if (!ctx) return;
-
-  drawPatternToCanvas(ctx, patternCanvas.value, patternGrid.value, {
+const getFullResCanvas = (): HTMLCanvasElement | null => {
+  if (!patternGrid.value.length) return null;
+  const pw = gridWidth.value * cellSize.value + axisMargin.value * 2;
+  const ph = gridHeight.value * cellSize.value + axisMargin.value * 2;
+  const c = document.createElement('canvas');
+  c.width = pw;
+  c.height = ph;
+  const ctx = c.getContext('2d');
+  if (!ctx) return null;
+  drawPatternToCanvas(ctx, c, patternGrid.value, {
     gridWidth: gridWidth.value,
     gridHeight: gridHeight.value,
     cellSize: cellSize.value,
@@ -222,51 +307,91 @@ const drawPattern = (): void => {
     showNumbers: showNumbers.value,
     gridLineInterval: 5
   });
+  return c;
 };
 
 watch(editMode, (value) => {
   if (!value) {
     pointerDown.value = false;
-    selectedCell.value = null;
+    selectionStart.value = null;
+    selectionEnd.value = null;
   }
 });
 
 watch(patternGrid, () => {
-  drawPattern();
+  scheduleRedraw();
+  nextTick(() => fitToContainer());
 }, { deep: true, immediate: true });
+
+watch([gridWidth, gridHeight, cellSize, axisMargin], () => {
+  if (!patternGrid.value.length) {
+    initCanvasSize();
+    scheduleRedraw();
+    nextTick(() => fitToContainer());
+  }
+});
+
+let resizeObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+  resizeObserver = new ResizeObserver(() => {
+    initCanvasSize();
+    fitToContainer();
+    scheduleRedraw();
+  });
+  if (containerRef.value) resizeObserver.observe(containerRef.value);
+  if (!patternGrid.value.length) {
+    initCanvasSize();
+    scheduleRedraw();
+    nextTick(() => fitToContainer());
+  }
+});
+
+onUnmounted(() => {
+  resizeObserver?.disconnect();
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+});
 
 defineExpose({
   get patternCanvas() {
     return patternCanvas.value;
   },
-  scale,
-  offsetX,
-  offsetY,
+  scale: viewScale,
+  offsetX: viewOffsetX,
+  offsetY: viewOffsetY,
   resetViewport,
-  getDisplayScale
+  getDisplayScale,
+  getFullResCanvas
 });
 </script>
 
 <style scoped>
 .preview-section {
-  display: flex;
-  gap: 20px;
   flex: 1;
-  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .canvas-wrapper {
-  flex: 1;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid #e4e7ed;
+  box-sizing: border-box;
 }
 
-/**
- * Canvas容器：支持缩放和平移
- */
 .canvas-container {
   flex: 1;
   width: 100%;
@@ -291,6 +416,8 @@ defineExpose({
 
 .pattern-canvas {
   display: block;
+  width: 100%;
+  height: 100%;
   border-radius: 4px;
 }
 
