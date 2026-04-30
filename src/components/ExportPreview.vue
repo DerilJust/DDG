@@ -1,126 +1,89 @@
 <template>
-  <div class="export-preview-section">
-    <el-card class="preview-card" shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <el-icon class="header-icon"><Download /></el-icon>
-          <span>导出预览</span>
-          <el-button type="primary" size="small" @click="downloadExport">
-            <el-icon><Download /></el-icon>
-            下载预览
-          </el-button>
-        </div>
-      </template>
-
-      <!-- 预览Canvas -->
+  <el-card class="export-card" shadow="hover">
+    <div v-if="originalImageUrl" class="export-content">
       <div class="preview-canvas-wrapper">
         <canvas ref="previewCanvas" class="preview-canvas"></canvas>
       </div>
-    </el-card>
-  </div>
+
+      <div class="compressed-section">
+        <div class="section-label">压缩数据</div>
+        <el-input v-model="compressedData" type="textarea" :rows="4" readonly resize="none"
+          class="compressed-textarea" />
+      </div>
+
+      <div class="export-actions">
+        <el-button type="primary" @click="downloadExport">
+          <el-icon>
+            <Download />
+          </el-icon>
+          下载预览
+        </el-button>
+        <el-button type="success" @click="copyCompressedData">
+          <el-icon>
+            <CopyDocument />
+          </el-icon>
+          复制压缩数据
+        </el-button>
+      </div>
+    </div>
+    <div v-else class="export-placeholder">
+      <p>请先上传原图并生成图纸。</p>
+    </div>
+  </el-card>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import type { PropType } from 'vue';
-import { Download } from '@element-plus/icons-vue';
+import { ref, computed, watch } from 'vue';
+import { storeToRefs } from 'pinia';
+import { Download, CopyDocument } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
+import { useAppStore } from '../store/appStore';
+import { compressPatternGrid } from '../utils/compressionUtils';
 
-interface ColorInfo {
-    r: number;
-    g: number;
-    b: number;
-    hex: string;
-}
+const appStore = useAppStore();
+const { originalImageUrl, patternGrid, showNumbers, gridWidth, gridHeight, selectedBrand, colorStats } = storeToRefs(appStore);
 
-interface ColorStat {
-    code: string;
-    color: ColorInfo;
-    count: number;
-}
-
-interface PatternCell {
-    code: string;
-    color: ColorInfo;
-}
-
-// 接收要导出的配置信息
-const props = defineProps({
-  // 拼豆颜色数组
-  colorStats: {
-    type: Array as PropType<ColorStat[]>,
-    default: () => []
-  },
-  // 拼豆图纸数据
-  patternGrid: {
-    type: Array as PropType<PatternCell[][]>,
-    default: () => []
-  },
-  // 显示数字标签
-  showNumbers: {
-    type: Boolean,
-    default: false
-  },
-  // 网格宽度
-  gridWidth: {
-    type: Number,
-    default: 30
-  },
-  // 网格高度
-  gridHeight: {
-    type: Number,
-    default: 30
-  },
-  // 品牌标识
-  selectedBrand: {
-    type: String,
-    default: 'MARD'
-  }
-});
-
-// Canvas引用
 const previewCanvas = ref<HTMLCanvasElement | null>(null);
 
-// ============ 事件处理 ============
+const compressedData = computed(() => {
+  if (!patternGrid.value.length) return '';
+  return compressPatternGrid(
+    patternGrid.value,
+    gridWidth.value,
+    gridHeight.value,
+    selectedBrand.value
+  );
+});
 
-// 获取对比色（用于文字）
 const getContrastColor = (r: number, g: number, b: number): string => {
-  // 使用亮度公式计算背景亮度
   const brightness = (r * 299 + g * 587 + b * 114) / 1000;
   return brightness > 128 ? '#000000' : '#ffffff';
 };
 
-// 生成导出预览图
 const generatePreview = (): void => {
-  if (!previewCanvas.value || !props.patternGrid.length) return;
+  if (!previewCanvas.value || !patternGrid.value.length) return;
 
-  // 配置参数
-  const cellSize = props.showNumbers ? 20 : 10;
-  const axisMargin = props.showNumbers ? 44 : 12;
+  const cellSize = showNumbers.value ? 20 : 10;
+  const axisMargin = showNumbers.value ? 44 : 12;
   const labelInterval = cellSize >= 20 ? 1 : 5;
 
-  // 创建临时canvas用于绘制图纸
   const tempCanvas = document.createElement('canvas');
   const tempCtx = tempCanvas.getContext('2d');
-  if (!tempCtx) return; // 如果无法获取2D上下文，直接返回
-  
-  tempCanvas.width = props.gridWidth * cellSize + axisMargin * 2;
-  tempCanvas.height = props.gridHeight * cellSize + axisMargin * 2;
+  if (!tempCtx) return;
 
-  // ========== 绘制网格 ==========
-  // 绘制格子颜色
-  for (let y = 0; y < props.gridHeight; y++) {
-    for (let x = 0; x < props.gridWidth; x++) {
-      const cell = props.patternGrid[y]?.[x];
+  tempCanvas.width = gridWidth.value * cellSize + axisMargin * 2;
+  tempCanvas.height = gridHeight.value * cellSize + axisMargin * 2;
+
+  for (let y = 0; y < gridHeight.value; y++) {
+    for (let x = 0; x < gridWidth.value; x++) {
+      const cell = patternGrid.value[y]?.[x];
       if (!cell) continue;
       const cellX = axisMargin + x * cellSize;
       const cellY = axisMargin + y * cellSize;
 
-      // 绘制格子颜色
       tempCtx.fillStyle = `rgb(${cell.color.r}, ${cell.color.g}, ${cell.color.b})`;
       tempCtx.fillRect(cellX, cellY, cellSize, cellSize);
 
-      // 绘制网格线：每5格粗线，其他细线
       const isGridLine5X = x % 5 === 4;
       const isGridLine5Y = y % 5 === 4;
       const isGridLine5 = isGridLine5X || isGridLine5Y;
@@ -129,8 +92,7 @@ const generatePreview = (): void => {
       tempCtx.lineWidth = isGridLine5 ? 1.5 : 0.5;
       tempCtx.strokeRect(cellX, cellY, cellSize, cellSize);
 
-      // 显示拼豆编号
-      if (props.showNumbers && cell.code) {
+      if (showNumbers.value && cell.code) {
         const colorCode = cell.code;
         let fontSize = cellSize * 0.55;
         tempCtx.font = `${fontSize}px Arial`;
@@ -142,7 +104,6 @@ const generatePreview = (): void => {
         const textX = cellX + cellSize / 2;
         const textY = cellY + cellSize / 2;
 
-        // 绘制文字（带描边和填充）
         tempCtx.textAlign = 'center';
         tempCtx.textBaseline = 'middle';
         tempCtx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
@@ -154,17 +115,14 @@ const generatePreview = (): void => {
     }
   }
 
-  // ========== 绘制坐标轴 ==========
-  if (props.showNumbers) {
+  if (showNumbers.value) {
     tempCtx.save();
-    // 坐标轴背景
     tempCtx.fillStyle = '#fff';
     tempCtx.fillRect(0, 0, tempCanvas.width, axisMargin);
     tempCtx.fillRect(0, 0, axisMargin, tempCanvas.height);
     tempCtx.fillRect(0, tempCanvas.height - axisMargin, tempCanvas.width, axisMargin);
     tempCtx.fillRect(tempCanvas.width - axisMargin, 0, axisMargin, tempCanvas.height);
 
-    // 坐标轴线
     tempCtx.strokeStyle = '#666';
     tempCtx.lineWidth = 1.5;
     tempCtx.beginPath();
@@ -174,13 +132,12 @@ const generatePreview = (): void => {
     tempCtx.lineTo(tempCanvas.width - axisMargin, axisMargin);
     tempCtx.stroke();
 
-    // 绘制坐标标签
     tempCtx.fillStyle = '#333';
     tempCtx.font = 'bold 12px Arial';
     tempCtx.textBaseline = 'middle';
 
-    for (let i = 0; i < props.gridWidth; i++) {
-      if (i === 0 || i === props.gridWidth - 1 || (i + 1) % labelInterval === 0) {
+    for (let i = 0; i < gridWidth.value; i++) {
+      if (i === 0 || i === gridWidth.value - 1 || (i + 1) % labelInterval === 0) {
         const label = `${i + 1}`;
         const x = axisMargin + i * cellSize + cellSize / 2;
         const topY = axisMargin / 2;
@@ -192,8 +149,8 @@ const generatePreview = (): void => {
       }
     }
 
-    for (let i = 0; i < props.gridHeight; i++) {
-      if (i === 0 || i === props.gridHeight - 1 || (i + 1) % labelInterval === 0) {
+    for (let i = 0; i < gridHeight.value; i++) {
+      if (i === 0 || i === gridHeight.value - 1 || (i + 1) % labelInterval === 0) {
         const label = `${i + 1}`;
         const y = axisMargin + i * cellSize + cellSize / 2;
         const leftX = axisMargin / 2;
@@ -208,54 +165,44 @@ const generatePreview = (): void => {
     tempCtx.restore();
   }
 
-  // ========== 绘制拼豆数量统计 ==========
-  // 计算统计信息区域的尺寸
   const columns = 3;
   const rowHeight = 48;
-  const headerHeight = 120; // 为统计信息标题和汇总信息留出空间
-  const statsHeight = Math.ceil(props.colorStats.length / columns) * rowHeight + headerHeight;
+  const headerHeight = 120;
+  const statsHeight = Math.ceil(colorStats.value.length / columns) * rowHeight + headerHeight;
 
-  // 调整canvas大小以容纳统计信息
   const finalCanvas = document.createElement('canvas');
   const finalCtx = finalCanvas.getContext('2d');
-  if (!finalCtx) return; // 如果无法获取2D上下文，直接返回
+  if (!finalCtx) return;
 
   finalCanvas.width = tempCanvas.width;
   finalCanvas.height = tempCanvas.height + statsHeight;
 
-  // 复制原始图纸到新canvas
   finalCtx.drawImage(tempCanvas, 0, 0);
 
-  // 绘制统计信息背景区域
   const originalHeight = tempCanvas.height;
   finalCtx.fillStyle = '#f9fafb';
   finalCtx.fillRect(0, originalHeight, finalCanvas.width, statsHeight);
 
-  // 绘制统计信息标题区域
   finalCtx.fillStyle = '#fff';
   finalCtx.fillRect(12, originalHeight + 12, finalCanvas.width - 24, headerHeight - 24);
   finalCtx.strokeStyle = '#e6e9ed';
   finalCtx.lineWidth = 1;
   finalCtx.strokeRect(12, originalHeight + 12, finalCanvas.width - 24, headerHeight - 24);
 
-  // 绘制统计信息标题
   finalCtx.fillStyle = '#333';
   finalCtx.font = 'bold 16px Arial';
   finalCtx.textAlign = 'left';
   finalCtx.fillText('拼豆数量统计', 24, originalHeight + 38);
 
-  // 计算统计数据
-  const totalCount = props.colorStats.reduce((sum, stat) => sum + stat.count, 0);
-  const colorCount = props.colorStats.length;
+  const totalCount = colorStats.value.reduce((sum, stat) => sum + stat.count, 0);
+  const colorCountVal = colorStats.value.length;
 
-  // 绘制汇总信息
   finalCtx.fillStyle = '#666';
   finalCtx.font = '14px Arial';
-  finalCtx.fillText(`品牌: ${props.selectedBrand}`, 24, originalHeight + 58);
-  finalCtx.fillText(`颜色数量: ${colorCount} 种`, 24, originalHeight + 78);
+  finalCtx.fillText(`品牌: ${selectedBrand.value}`, 24, originalHeight + 58);
+  finalCtx.fillText(`颜色数量: ${colorCountVal} 种`, 24, originalHeight + 78);
   finalCtx.fillText(`总数量: ${totalCount} 颗`, 24, originalHeight + 98);
 
-  // 绘制表格头部
   const tableStartY = originalHeight + headerHeight - 12;
   finalCtx.fillStyle = '#f8f9fa';
   finalCtx.fillRect(12, tableStartY, finalCanvas.width - 24, 32);
@@ -263,7 +210,6 @@ const generatePreview = (): void => {
   finalCtx.lineWidth = 1;
   finalCtx.strokeRect(12, tableStartY, finalCanvas.width - 24, 32);
 
-  // 绘制表头文字
   finalCtx.fillStyle = '#303133';
   finalCtx.font = 'bold 14px Arial';
   finalCtx.textAlign = 'left';
@@ -271,24 +217,21 @@ const generatePreview = (): void => {
   finalCtx.textAlign = 'right';
   finalCtx.fillText('数量', finalCanvas.width - 32, tableStartY + 22);
 
-  // 绘制统计信息表格
   const tableBodyStartY = tableStartY + 32;
-  const tableHeight = Math.ceil(props.colorStats.length / columns) * rowHeight;
+  const tableHeight = Math.ceil(colorStats.value.length / columns) * rowHeight;
   finalCtx.fillStyle = '#fff';
   finalCtx.fillRect(12, tableBodyStartY, finalCanvas.width - 24, tableHeight);
   finalCtx.strokeStyle = '#dee2e6';
   finalCtx.lineWidth = 1;
   finalCtx.strokeRect(12, tableBodyStartY, finalCanvas.width - 24, tableHeight);
 
-  // 绘制表格行
-  props.colorStats.forEach((stat, index) => {
+  colorStats.value.forEach((stat, index) => {
     const row = Math.floor(index / columns);
     const col = index % columns;
     const columnWidth = (finalCanvas.width - 24) / columns;
     const x = 12 + col * columnWidth;
     const y = tableBodyStartY + row * rowHeight;
 
-    // 绘制行边框
     if (row > 0 || col > 0) {
       finalCtx.strokeStyle = '#dee2e6';
       finalCtx.lineWidth = 1;
@@ -302,27 +245,23 @@ const generatePreview = (): void => {
       finalCtx.stroke();
     }
 
-    // 绘制颜色块和编号
     finalCtx.fillStyle = `rgb(${stat.color.r}, ${stat.color.g}, ${stat.color.b})`;
     finalCtx.fillRect(x + 8, y + 8, 24, 24);
     finalCtx.strokeStyle = '#e4e7ed';
     finalCtx.lineWidth = 1;
     finalCtx.strokeRect(x + 8, y + 8, 24, 24);
 
-    // 绘制编号
     finalCtx.fillStyle = '#333';
     finalCtx.font = '14px Arial';
     finalCtx.textAlign = 'left';
     finalCtx.fillText(stat.code, x + 40, y + 22);
 
-    // 绘制数量标签
     finalCtx.fillStyle = '#409EFF';
     finalCtx.font = 'bold 12px Arial';
     finalCtx.textAlign = 'right';
     finalCtx.fillText(`${stat.count} 颗`, x + columnWidth - 8, y + 22);
   });
 
-  // 显示预览canvas
   if (previewCanvas.value) {
     previewCanvas.value.width = finalCanvas.width;
     previewCanvas.value.height = finalCanvas.height;
@@ -333,7 +272,19 @@ const generatePreview = (): void => {
   }
 };
 
-// 下载导出图
+const copyCompressedData = async (): Promise<void> => {
+  if (!compressedData.value) {
+    ElMessage.warning('请先生成拼豆图纸');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(compressedData.value);
+    ElMessage.success(`压缩数据已复制到剪贴板 (${compressedData.value.length} 字符)`);
+  } catch {
+    ElMessage.error('复制失败，请手动复制');
+  }
+};
+
 const downloadExport = (): void => {
   if (!previewCanvas.value || previewCanvas.value.width === 0) {
     ElMessage.warning('请先生成拼豆图纸');
@@ -346,12 +297,10 @@ const downloadExport = (): void => {
   link.click();
 };
 
-// 监听相关属性变化，重新生成预览
-watch([() => props.patternGrid, () => props.showNumbers, () => props.selectedBrand, () => props.colorStats], () => {
+watch([patternGrid, showNumbers, selectedBrand, colorStats], () => {
   generatePreview();
 }, { deep: true, immediate: true });
 
-// 暴露接口供父组件使用
 defineExpose({
   generatePreview,
   downloadExport
@@ -359,35 +308,15 @@ defineExpose({
 </script>
 
 <style scoped>
-.export-preview-section {
-  width: 100%;
-}
-
-.preview-card {
-  width: 100%;
+.export-card {
   border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.3s ease;
+  height: 100%;
 }
 
-.preview-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.15);
-}
-
-.card-header {
+.export-content {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, #f6f8fa 0%, #e9ecef 100%);
-  border-bottom: 1px solid #e4e7ed;
-}
-
-.header-icon {
-  font-size: 18px;
-  color: #409EFF;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .preview-canvas-wrapper {
@@ -395,7 +324,8 @@ defineExpose({
   max-height: 600px;
   overflow: auto;
   background: linear-gradient(135deg, #f0f2f5 0%, #e6e8eb 100%);
-  border-radius: 0 0 8px 8px;
+  border-radius: 10px;
+  border: 1px solid #e4e7ed;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -407,5 +337,45 @@ defineExpose({
   height: auto;
   border-radius: 4px;
   box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.15);
+}
+
+.compressed-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #606266;
+}
+
+.compressed-textarea :deep(.el-textarea__inner) {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  color: #303133;
+  background: #f9fafb;
+  border-radius: 8px;
+  word-break: break-all;
+}
+
+.export-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.export-placeholder {
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #909399;
+  background: #f9fafb;
+  border: 1px dashed #e4e7ed;
+  border-radius: 10px;
+  padding: 24px;
+  text-align: center;
 }
 </style>

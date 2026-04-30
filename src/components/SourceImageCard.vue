@@ -1,7 +1,8 @@
 <template>
     <el-card class="source-card" shadow="hover">
         <div v-if="originalImageUrl" class="source-image-wrapper">
-            <el-image :src="originalImageUrl" fit="contain" class="source-image" :preview-src-list="[originalImageUrl]" />
+            <el-image :src="originalImageUrl" fit="contain" class="source-image"
+                :preview-src-list="[originalImageUrl]" />
         </div>
         <div v-else class="source-placeholder">
             <p>请先上传原图并生成图纸。</p>
@@ -20,7 +21,7 @@ const { originalImageUrl } = storeToRefs(appStore);
 <style scoped>
 .source-card {
     border-radius: 12px;
-    overflow: hidden;
+    height: 100%;
 }
 
 .source-image-wrapper {
