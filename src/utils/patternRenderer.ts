@@ -140,7 +140,7 @@ export function createPreviewOverlay(
 
 export function drawPatternToCanvas(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  _canvas: HTMLCanvasElement,
   patternGrid: PatternCell[][],
   options: Partial<RenderOptions> = {}
 ): void {

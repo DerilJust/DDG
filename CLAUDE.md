@@ -15,6 +15,7 @@ eyedropper tools.
 - **Build Tool**: Vite 6
 - **State Management**: Pinia 3
 - **UI Library**: Element Plus 2.8
+- **Router**: vue-router 4 (hash history)
 - **Rendering**: Canvas 2D API (no third-party canvas lib)
 - **Icons**: @element-plus/icons-vue
 
@@ -22,9 +23,15 @@ eyedropper tools.
 
 ```
 src/
-  main.ts                          # App entry -- creates Pinia + ElementPlus + mounts
-  App.vue                          # Root layout: header, sidebar (collapsible), tabs
+  main.ts                          # App entry -- creates Pinia + ElementPlus + Router + mounts
+  App.vue                          # Root layout: header with nav tabs, <router-view>
   style.css                        # Global CSS variables, scrollbar, font-face
+  router/
+    index.ts                       # Vue Router 4 config (hash history, 3 lazy-loaded routes)
+  pages/
+    HomePage.vue                   # Landing page with hero section and feature cards
+    EditorPage.vue                 # Full editor (sidebar + tabs + footer) -- migrated from App.vue
+    FocusBeadPage.vue              # Placeholder "coming soon" page
   types/
     index.ts                       # All TypeScript interfaces (AppStoreState, CropperImageData, etc.)
   store/
@@ -40,6 +47,7 @@ src/
     editUtils.ts                   # Grid cloning (clonePatternGrid) and flood-fill
                                    # (fillConnectedRegion via stack-based BFS)
     selectionUtils.ts              # Selection geometry -- normalize, clamp, getPendingCells
+    compressionUtils.ts            # RLE string compression/decompression for pattern grid export
   components/
     UploadSection.vue              # Sidebar "图片上传" card -- opens UploadDialog
     UploadDialog.vue               # Modal dialog: image upload, crop canvas with handles,
@@ -48,7 +56,7 @@ src/
     PatternInfo.vue                # Sidebar color usage statistics table
     SourceImageCard.vue            # Tab: original image preview
     PreviewSection.vue             # Tab: perler pattern canvas viewer (with pan/zoom)
-    ExportPreview.vue              # Tab: export-ready preview + download button
+    ExportPreview.vue              # Tab: export-ready preview + download + compressed string export
     EditPalette.vue                # Footer: color palette editor, tool selector, undo/redo
   colorMap/
     colorSystemMapping.json        # 292 HEX keys -> { MARD, COCO, 漫漫, 盼盼, 咪小窝 } brand codes
@@ -77,6 +85,16 @@ src/
 | `editMode` / `selectedTool` / `selectedEditColor` | various | Editor state |
 | `undoStack` / `redoStack` | PatternCell[][][] | History stacks (max 50) |
 
+### Routing
+
+Vue Router 4 with hash history (`createWebHashHistory`). Three routes:
+
+| Path | Page | Description |
+|---|---|---|
+| `/` | HomePage | Landing page with hero, feature cards, stats |
+| `/editor` | EditorPage | Full perler bead pattern editor |
+| `/focus` | FocusBeadPage | Placeholder ("coming soon") |
+
 ### Image Processing Pipeline
 
 1. User uploads image via `el-upload` in `UploadDialog`
@@ -97,18 +115,32 @@ The composable `useAspectRatioLock` in UploadDialog:
 - Uses a `ratioLocking` guard ref to prevent recursive watcher calls
 - Returns `imageRatio` as a computed string like "4:3" (simplified via GCD)
 
+### Pattern Compression Format
+
+`compressionUtils.ts` provides RLE (run-length encoding) for pattern grid export:
+
+- **Format**: `WxH|count:code,count:code,...`
+- Cells are scanned left-to-right, top-to-bottom; consecutive same-code cells are merged into `count:code` runs
+- Blank/white cells use `_` as the code
+- `compressPatternGrid()` serializes; `decompressPatternGrid()` reconstructs
+
 ### Component Dependency Tree
 
 ```
 App.vue
-  |-- UploadSection.vue
-  |     |-- UploadDialog.vue  (uses useAspectRatioLock composable)
-  |-- Controls.vue            (uses useAspectRatioLock composable)
-  |-- PatternInfo.vue
-  |-- SourceImageCard.vue
-  |-- PreviewSection.vue
-  |-- ExportPreview.vue
-  |-- EditPalette.vue
+  |-- (header with nav tabs: Home, Editor, Focus)
+  |-- <router-view>
+        |-- HomePage.vue
+        |-- EditorPage.vue
+        |     |-- UploadSection.vue
+        |     |     |-- UploadDialog.vue  (uses useAspectRatioLock composable)
+        |     |-- Controls.vue            (uses useAspectRatioLock composable)
+        |     |-- PatternInfo.vue
+        |     |-- SourceImageCard.vue
+        |     |-- PreviewSection.vue
+        |     |-- ExportPreview.vue
+        |     |-- EditPalette.vue
+        |-- FocusBeadPage.vue
 ```
 
 ### Communication Pattern
