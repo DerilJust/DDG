@@ -11,7 +11,10 @@
 - 在线编辑：画笔、填充、橡皮、吸管工具，支持撤销/重做
 - 数量统计：自动统计每种颜色的使用数量
 - 编号显示：在格子内显示颜色编号，方便对照制作
-- 导出下载：导出带统计信息的完整图纸 PNG
+- 导出下载：导出带统计信息的完整图纸 PNG，支持 RLE 压缩字符串导入/导出
+- 视图操作：图纸预览支持缩放、平移，方便查看细节
+- 多页面路由：首页、编辑器、专注串珠页面（开发中）
+- CI/CD：GitHub Actions 自动检查代码质量和构建
 
 ## 技术栈
 
@@ -26,7 +29,7 @@
 1. **克隆项目**
 
    ```bash
-   git clone <repo-url>
+   git clone https://github.com/DerilJust/DDG.git
    cd DDG
    ```
 
@@ -43,9 +46,22 @@
    ```
 
 4. **构建生产版本**
+
    ```bash
    npm run build
    ```
+
+## 开发命令
+
+| 命令                   | 说明                       |
+| ---------------------- | -------------------------- |
+| `npm run dev`          | 启动开发服务器             |
+| `npm run build`        | 类型检查 + 生产构建        |
+| `npm run type-check`   | 仅运行 TypeScript 类型检查 |
+| `npm run lint`         | 运行 ESLint 代码检查       |
+| `npm run format`       | 使用 Prettier 格式化代码   |
+| `npm run format:check` | 检查代码格式是否符合规范   |
+| `npm run preview`      | 预览生产构建结果           |
 
 ## 使用方法
 
@@ -64,31 +80,51 @@
 ## 项目结构
 
 ```
+├── .github/
+│   └── workflows/
+│       └── ci.yml                 # GitHub Actions CI（lint + build）
 ├── src/
 │   ├── components/
-│   │   ├── UploadSection.vue      # 图片上传组件
-│   │   ├── CropperDialog.vue      # 图片裁剪弹窗
-│   │   ├── Controls.vue           # 参数设置组件
+│   │   ├── UploadSection.vue      # 图片上传入口
+│   │   ├── UploadDialog.vue       # 图片裁剪弹窗（含预设比例）
+│   │   ├── Controls.vue           # 参数设置（网格、颜色数、品牌）
 │   │   ├── PreviewSection.vue     # 拼豆图纸预览（Canvas + 缩放平移）
+│   │   ├── CanvasViewer.vue       # 原图 Canvas 查看器
 │   │   ├── EditPalette.vue        # 颜色编辑面板（画笔/填充/橡皮/吸管）
 │   │   ├── PatternInfo.vue        # 颜色数量统计
-│   │   ├── ExportPreview.vue      # 导出预览与下载
-│   │   └── SourceImageCard.vue    # 原图预览
+│   │   ├── ExportPreview.vue      # 导出预览 + 下载 + 压缩字符串
+│   │   └── SourceImageCard.vue    # 原图预览卡片
+│   ├── composables/
+│   │   └── useAspectRatioLock.ts  # 宽高比锁定逻辑
+│   ├── pages/
+│   │   ├── HomePage.vue           # 首页（Hero + 功能卡片 + GitHub 链接）
+│   │   ├── EditorPage.vue         # 编辑器主页面
+│   │   └── FocusBeadPage.vue      # 专注串珠页面（开发中）
+│   ├── router/
+│   │   └── index.ts               # Vue Router（Hash 模式）
 │   ├── store/
 │   │   └── appStore.ts            # Pinia 状态管理（核心业务逻辑）
 │   ├── utils/
 │   │   ├── patternUtils.ts        # 颜色匹配、量化、统计算法
 │   │   ├── patternRenderer.ts     # Canvas 图纸渲染引擎
 │   │   ├── editUtils.ts           # 编辑工具（泛洪填充、克隆等）
-│   │   └── selectionUtils.ts      # 选区坐标计算
+│   │   ├── selectionUtils.ts      # 选区坐标计算
+│   │   └── compressionUtils.ts    # RLE 压缩 / 解压（图纸导出）
 │   ├── types/
 │   │   └── index.ts               # TypeScript 类型定义
 │   ├── colorMap/
 │   │   └── colorSystemMapping.json # 292 色 → 5 品牌色号映射
-│   ├── App.vue                    # 根组件
-│   └── main.ts                    # 应用入口
+│   ├── assets/
+│   │   └── fonts/
+│   │       └── ChillBitmap_16px.ttf # 像素字体
+│   ├── App.vue                    # 根组件（Header + 导航）
+│   ├── main.ts                    # 应用入口
+│   └── style.css                  # 全局样式
+├── eslint.config.js               # ESLint 配置（flat config）
+├── prettier.config.js             # Prettier 配置
 ├── index.html
 ├── package.json
+├── tsconfig.json
 └── vite.config.ts
 ```
 
