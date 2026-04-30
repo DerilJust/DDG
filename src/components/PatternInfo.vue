@@ -4,7 +4,7 @@
       <el-icon class="title-icon"><InfoFilled /></el-icon>
       图纸信息
     </h3>
-    
+
     <el-card class="info-card" shadow="hover">
       <template #header>
         <div class="card-header">
@@ -13,9 +13,16 @@
         </div>
       </template>
       <el-empty v-if="infoText === '请上传图片并生成图纸'" description="请上传图片并生成图纸" />
-      <el-alert v-else :title="infoText" type="info" show-icon :closable="false" class="info-alert" />
+      <el-alert
+        v-else
+        :title="infoText"
+        type="info"
+        show-icon
+        :closable="false"
+        class="info-alert"
+      />
     </el-card>
-    
+
     <el-card v-if="colorStats.length > 0" class="stats-card" shadow="hover">
       <template #header>
         <div class="card-header">
@@ -27,16 +34,19 @@
         <el-table-column prop="code" label="颜色编号" width="120">
           <template #default="scope">
             <div class="stat-item">
-              <div class="stat-color" :style="{ backgroundColor: `rgb(${scope.row.color.r}, ${scope.row.color.g}, ${scope.row.color.b})` }"></div>
+              <div
+                class="stat-color"
+                :style="{
+                  backgroundColor: `rgb(${scope.row.color.r}, ${scope.row.color.g}, ${scope.row.color.b})`
+                }"
+              ></div>
               <span>{{ scope.row.code }}</span>
             </div>
           </template>
         </el-table-column>
         <el-table-column prop="count" label="数量">
           <template #default="scope">
-            <el-tag type="info" size="small" class="count-tag">
-              {{ scope.row.count }} 颗
-            </el-tag>
+            <el-tag type="info" size="small" class="count-tag"> {{ scope.row.count }} 颗 </el-tag>
           </template>
         </el-table-column>
       </el-table>
@@ -45,12 +55,12 @@
 </template>
 
 <script setup lang="ts">
-import { storeToRefs } from 'pinia';
-import { useAppStore } from '../store/appStore';
-import { InfoFilled, Message, DataAnalysis } from '@element-plus/icons-vue';
+import { storeToRefs } from 'pinia'
+import { useAppStore } from '../store/appStore'
+import { InfoFilled, Message, DataAnalysis } from '@element-plus/icons-vue'
 
-const appStore = useAppStore();
-const { infoText, colorStats } = storeToRefs(appStore);
+const appStore = useAppStore()
+const { infoText, colorStats } = storeToRefs(appStore)
 </script>
 
 <style scoped>
@@ -71,7 +81,7 @@ const { infoText, colorStats } = storeToRefs(appStore);
 
 .title-icon {
   font-size: 18px;
-  color: #409EFF;
+  color: #409eff;
 }
 
 .info-card,
@@ -102,7 +112,7 @@ const { infoText, colorStats } = storeToRefs(appStore);
 
 .header-icon {
   font-size: 16px;
-  color: #409EFF;
+  color: #409eff;
 }
 
 .info-alert {

@@ -24,17 +24,20 @@
 ## 安装步骤
 
 1. **克隆项目**
+
    ```bash
    git clone <repo-url>
    cd DDG
    ```
 
 2. **安装依赖**
+
    ```bash
    npm install
    ```
 
 3. **启动开发服务器**
+
    ```bash
    npm run dev
    ```

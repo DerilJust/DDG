@@ -75,29 +75,29 @@ src/
 `useAppStore` (Pinia) is the sole source of truth. All components read/write via
 `storeToRefs()` for reactive binding. Key state fields:
 
-| Field | Type | Purpose |
-|---|---|---|
-| `originalImage` / `originalImageUrl` / `originalImageSize` | File / string / ImageSize | The user's uploaded & cropped image |
-| `gridWidth` / `gridHeight` | number (default 30) | Target pattern grid dimensions |
-| `colorCount` | number (1-50) | Number of colors to quantize to |
-| `selectedBrand` | string | Brand code system (MARD/COCO/漫漫/盼盼/咪小窝) |
-| `showNumbers` | boolean | Whether to show color codes in grid cells |
-| `lockAspectRatio` | boolean (default true) | If on, changing gridWidth auto-updates gridHeight (and vice versa) to match the image's natural aspect ratio |
-| `perlerColors` | PerlerColor[] | Loaded from colorSystemMapping.json (292 entries) |
-| `patternGrid` | PatternCell[][] | The generated perler pattern -- 2D array of {color, code} |
-| `colorStats` | ColorStat[] | Computed usage stats from patternGrid |
-| `editMode` / `selectedTool` / `selectedEditColor` | various | Editor state |
-| `undoStack` / `redoStack` | PatternCell[][][] | History stacks (max 50) |
+| Field                                                      | Type                      | Purpose                                                                                                      |
+| ---------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `originalImage` / `originalImageUrl` / `originalImageSize` | File / string / ImageSize | The user's uploaded & cropped image                                                                          |
+| `gridWidth` / `gridHeight`                                 | number (default 30)       | Target pattern grid dimensions                                                                               |
+| `colorCount`                                               | number (1-50)             | Number of colors to quantize to                                                                              |
+| `selectedBrand`                                            | string                    | Brand code system (MARD/COCO/漫漫/盼盼/咪小窝)                                                               |
+| `showNumbers`                                              | boolean                   | Whether to show color codes in grid cells                                                                    |
+| `lockAspectRatio`                                          | boolean (default true)    | If on, changing gridWidth auto-updates gridHeight (and vice versa) to match the image's natural aspect ratio |
+| `perlerColors`                                             | PerlerColor[]             | Loaded from colorSystemMapping.json (292 entries)                                                            |
+| `patternGrid`                                              | PatternCell[][]           | The generated perler pattern -- 2D array of {color, code}                                                    |
+| `colorStats`                                               | ColorStat[]               | Computed usage stats from patternGrid                                                                        |
+| `editMode` / `selectedTool` / `selectedEditColor`          | various                   | Editor state                                                                                                 |
+| `undoStack` / `redoStack`                                  | PatternCell[][][]         | History stacks (max 50)                                                                                      |
 
 ### Routing
 
 Vue Router 4 with hash history (`createWebHashHistory`). Three routes:
 
-| Path | Page | Description |
-|---|---|---|
-| `/` | HomePage | Landing page with hero, feature cards, stats |
-| `/editor` | EditorPage | Full perler bead pattern editor |
-| `/focus` | FocusBeadPage | Placeholder ("coming soon") |
+| Path      | Page          | Description                                  |
+| --------- | ------------- | -------------------------------------------- |
+| `/`       | HomePage      | Landing page with hero, feature cards, stats |
+| `/editor` | EditorPage    | Full perler bead pattern editor              |
+| `/focus`  | FocusBeadPage | Placeholder ("coming soon")                  |
 
 ### Image Processing Pipeline
 
@@ -113,6 +113,7 @@ Vue Router 4 with hash history (`createWebHashHistory`). Three routes:
 ### Aspect Ratio Lock Flow
 
 The composable `useAspectRatioLock` in UploadDialog:
+
 - Watches `gridWidth` changes: when lock is on, updates `gridHeight = round(gridWidth / effectiveAspectRatio)`
 - Watches `gridHeight` changes: when lock is on, updates `gridWidth = round(gridHeight * effectiveAspectRatio)`
 - `effectiveAspectRatio` is computed from `localImageNaturalSize` (dialog's image) or `originalImageSize` (store's image), falling back to 1
@@ -155,11 +156,11 @@ App.vue
 
 ## Build Commands
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Start Vite dev server (HMR) |
-| `npm run build` | Type-check (`vue-tsc -b`) then production build (`vite build`) |
-| `npm run preview` | Preview production build locally |
+| Command           | Description                                                    |
+| ----------------- | -------------------------------------------------------------- |
+| `npm run dev`     | Start Vite dev server (HMR)                                    |
+| `npm run build`   | Type-check (`vue-tsc -b`) then production build (`vite build`) |
+| `npm run preview` | Preview production build locally                               |
 
 ## Key Conventions
 
@@ -173,7 +174,9 @@ App.vue
 - Flood fill uses stack-based iterative BFS (not recursive, safe for large grids)
 - History stack is capped at 50 entries
 
+## Update md files
 
+- Update README.md and CLAUDE.md if needed
 
 ## Build and Test Commands
 
@@ -241,7 +244,6 @@ App.vue
   - Minimise special case handling - prefer explicit over implicit behaviour
   - Consider adding tests first before implementing features
 - **When simplifying existing code**
-
   - Prefer helper functions for repetitive operations (like the `appendParam` function)
   - Remove unnecessary type checking where types are expected to be correct
   - Replace complex conditionals with more readable alternatives when possible
@@ -254,7 +256,6 @@ App.vue
 - Ensure simplifications don't break existing behavior or assumptions
 
 - **Constants and Magic Numbers**:
-
   - Local un-exported properties should be used for shared constants
   - Local constants should be used for temporary values
   - Always use named constants instead of magic numbers in code

@@ -79,7 +79,7 @@ export function decompressPatternGrid(
       const code = run.substring(colonIdx + 1)
       if (isNaN(count) || count <= 0) return null
 
-      const hex = code === '_' ? '#FFFFFF' : (reverseMap[code] || '#FFFFFF')
+      const hex = code === '_' ? '#FFFFFF' : reverseMap[code] || '#FFFFFF'
       const color = hexToColor(hex)
       const finalCode = code === '_' ? '' : code
 
