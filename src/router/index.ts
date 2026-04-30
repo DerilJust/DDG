@@ -6,19 +6,19 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: () => import('../pages/HomePage.vue'),
+      component: () => import('../pages/HomePage.vue')
     },
     {
       path: '/editor',
       name: 'editor',
-      component: () => import('../pages/EditorPage.vue'),
+      component: () => import('../pages/EditorPage.vue')
     },
     {
       path: '/focus',
       name: 'focus',
-      component: () => import('../pages/FocusBeadPage.vue'),
-    },
-  ],
+      component: () => import('../pages/FocusBeadPage.vue')
+    }
+  ]
 })
 
 export default router

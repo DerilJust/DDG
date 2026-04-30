@@ -9,6 +9,19 @@
       <div class="hero-content">
         <div class="hero-badge">
           <el-tag type="primary" round size="large">v1.0</el-tag>
+          <a
+            href="https://github.com/DerilJust/DDG"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="github-link"
+            title="GitHub"
+          >
+            <svg class="github-icon" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+              <path
+                d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"
+              />
+            </svg>
+          </a>
         </div>
         <h1 class="hero-title">
           <span class="title-line">拼豆图纸</span>
@@ -38,7 +51,12 @@
           <div class="mockup-card">
             <div class="mockup-dots">
               <span v-for="row in 6" :key="row" class="mockup-row">
-                <span v-for="col in 10" :key="col" class="mockup-dot" :style="{ background: randomMockColor() }" />
+                <span
+                  v-for="col in 10"
+                  :key="col"
+                  class="mockup-dot"
+                  :style="{ background: randomMockColor() }"
+                />
               </span>
             </div>
             <div class="mockup-label">30×30 · MARD · 20色</div>
@@ -54,7 +72,14 @@
         <p class="section-subtitle">一站式拼豆图纸制作流程</p>
       </div>
       <el-row :gutter="28" justify="center">
-        <el-col style="margin-bottom:12px;" :xs="24" :sm="12" :lg="8" v-for="(feat, idx) in features" :key="feat.title">
+        <el-col
+          style="margin-bottom: 12px"
+          :xs="24"
+          :sm="12"
+          :lg="8"
+          v-for="(feat, idx) in features"
+          :key="feat.title"
+        >
           <div class="feature-card" :style="{ animationDelay: `${idx * 0.1}s` }">
             <div class="feature-icon-wrap" :style="{ background: feat.gradient }">
               <el-icon :size="32">
@@ -99,7 +124,12 @@
         <p class="section-subtitle">覆盖多个主流品牌，精准还原您的创意</p>
       </div>
       <div class="color-strip">
-        <div v-for="color in showcaseColors" :key="color" class="color-chip" :style="{ background: color }" />
+        <div
+          v-for="color in showcaseColors"
+          :key="color"
+          class="color-chip"
+          :style="{ background: color }"
+        />
       </div>
       <div class="brand-badges">
         <el-tag v-for="b in brands" :key="b" size="large" round effect="plain">
@@ -142,8 +172,15 @@
 
 <script setup lang="ts">
 import {
-  Edit, ArrowDown, PictureFilled, Grid, EditPen, Download,
-  Upload, Crop, MagicStick,
+  Edit,
+  ArrowDown,
+  PictureFilled,
+  Grid,
+  EditPen,
+  Download,
+  Upload,
+  Crop,
+  MagicStick
 } from '@element-plus/icons-vue'
 
 const features = [
@@ -151,68 +188,160 @@ const features = [
     icon: PictureFilled,
     title: '图片上传与裁剪',
     desc: '支持多种图片格式上传，提供精确的裁剪工具和预设比例，自由选取图案区域。',
-    gradient: 'linear-gradient(135deg, #667eea, #764ba2)',
+    gradient: 'linear-gradient(135deg, #667eea, #764ba2)'
   },
   {
     icon: Grid,
     title: '智能颜色匹配',
     desc: '自动将图片颜色映射到 292 种真实拼豆颜色，支持 MARD、COCO 等 5 大品牌编码系统。',
-    gradient: 'linear-gradient(135deg, #f093fb, #f5576c)',
+    gradient: 'linear-gradient(135deg, #f093fb, #f5576c)'
   },
   {
     icon: EditPen,
     title: '交互式编辑',
     desc: '画笔、填充、橡皮擦、吸管四大工具，支持无限撤销/重做，随心微调每一颗拼豆。',
-    gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)',
+    gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)'
   },
   {
     icon: MagicStick,
     title: '色阶量化控制',
     desc: '1-50 级色阶可调，从极简到丰富，精准控制图纸的颜色数量和视觉风格。',
-    gradient: 'linear-gradient(135deg, #43e97b, #38f9d7)',
+    gradient: 'linear-gradient(135deg, #43e97b, #38f9d7)'
   },
   {
     icon: Upload,
     title: '一键导出下载',
     desc: '高清 PNG 图纸导出，含颜色统计表和坐标标注，支持压缩数据分享。',
-    gradient: 'linear-gradient(135deg, #fa709a, #fee140)',
+    gradient: 'linear-gradient(135deg, #fa709a, #fee140)'
   },
   {
     icon: Crop,
     title: '多格式预览',
     desc: '原图对照、拼豆预览、导出预览三视图，缩放平移流畅，所见即所得。',
-    gradient: 'linear-gradient(135deg, #a18cd1, #fbc2eb)',
-  },
+    gradient: 'linear-gradient(135deg, #a18cd1, #fbc2eb)'
+  }
 ]
 
 const steps = [
-  { icon: Upload, title: '上传图片', desc: '拖拽或选择图片，支持 JPG、PNG 等常见格式，自动适配尺寸。', color: '#667eea' },
-  { icon: Crop, title: '裁剪调整', desc: '拖拽裁剪框或选择预设比例，精确选取想要生成图纸的区域。', color: '#f5576c' },
-  { icon: MagicStick, title: '生成图纸', desc: '设置网格大小和色阶数量，AI 智能匹配最近似的拼豆颜色。', color: '#4facfe' },
-  { icon: Download, title: '导出分享', desc: '下载高清 PNG 图纸或复制压缩数据，与拼豆爱好者分享创作。', color: '#43e97b' },
+  {
+    icon: Upload,
+    title: '上传图片',
+    desc: '拖拽或选择图片，支持 JPG、PNG 等常见格式，自动适配尺寸。',
+    color: '#667eea'
+  },
+  {
+    icon: Crop,
+    title: '裁剪调整',
+    desc: '拖拽裁剪框或选择预设比例，精确选取想要生成图纸的区域。',
+    color: '#f5576c'
+  },
+  {
+    icon: MagicStick,
+    title: '生成图纸',
+    desc: '设置网格大小和色阶数量，AI 智能匹配最近似的拼豆颜色。',
+    color: '#4facfe'
+  },
+  {
+    icon: Download,
+    title: '导出分享',
+    desc: '下载高清 PNG 图纸或复制压缩数据，与拼豆爱好者分享创作。',
+    color: '#43e97b'
+  }
 ]
 
 const stats = [
   { value: '292', label: '真实拼豆颜色' },
   { value: '5', label: '品牌编码系统' },
   { value: '50', label: '最大色阶量化' },
-  { value: '50', label: '步撤销/重做' },
+  { value: '50', label: '步撤销/重做' }
 ]
 
 const brands = ['MARD', 'COCO', '漫漫', '盼盼', '咪小窝']
 
 const showcaseColors = [
-  '#FAF4C8', '#FCF6D6', '#FCEA9E', '#FDE278', '#FFD165', '#FEC652', '#FDBF3F', '#FDB82C',
-  '#FEA819', '#FD9800', '#FFA631', '#F18D25', '#FF8C21', '#F0821E', '#EA7D1B', '#E57218',
-  '#DD6715', '#D65C12', '#CF510F', '#C8460C', '#BC3B09', '#B03006', '#A42503', '#981A00',
-  '#FFB5B5', '#FF9C9C', '#FF8383', '#FF6A6A', '#FF5151', '#FF3838', '#FF1F1F', '#FF0000',
-  '#E50000', '#CC0000', '#B20000', '#990000', '#7F0000', '#E8B8D0', '#F5A2C6', '#EDA0C3',
-  '#EEA2C4', '#E99BB6', '#E494A8', '#DF8D9A', '#DA868C', '#D57F7E', '#D07870', '#CB7162',
-  '#E6F5C8', '#D4EEB0', '#C5E99B', '#B2E080', '#A0D668', '#8AC64E', '#75B636', '#60A61E',
-  '#C8E6F5', '#B0D4EE', '#98C2E7', '#80B0E0', '#689ED9', '#508CD2', '#387ACB', '#2068C4',
+  '#FAF4C8',
+  '#FCF6D6',
+  '#FCEA9E',
+  '#FDE278',
+  '#FFD165',
+  '#FEC652',
+  '#FDBF3F',
+  '#FDB82C',
+  '#FEA819',
+  '#FD9800',
+  '#FFA631',
+  '#F18D25',
+  '#FF8C21',
+  '#F0821E',
+  '#EA7D1B',
+  '#E57218',
+  '#DD6715',
+  '#D65C12',
+  '#CF510F',
+  '#C8460C',
+  '#BC3B09',
+  '#B03006',
+  '#A42503',
+  '#981A00',
+  '#FFB5B5',
+  '#FF9C9C',
+  '#FF8383',
+  '#FF6A6A',
+  '#FF5151',
+  '#FF3838',
+  '#FF1F1F',
+  '#FF0000',
+  '#E50000',
+  '#CC0000',
+  '#B20000',
+  '#990000',
+  '#7F0000',
+  '#E8B8D0',
+  '#F5A2C6',
+  '#EDA0C3',
+  '#EEA2C4',
+  '#E99BB6',
+  '#E494A8',
+  '#DF8D9A',
+  '#DA868C',
+  '#D57F7E',
+  '#D07870',
+  '#CB7162',
+  '#E6F5C8',
+  '#D4EEB0',
+  '#C5E99B',
+  '#B2E080',
+  '#A0D668',
+  '#8AC64E',
+  '#75B636',
+  '#60A61E',
+  '#C8E6F5',
+  '#B0D4EE',
+  '#98C2E7',
+  '#80B0E0',
+  '#689ED9',
+  '#508CD2',
+  '#387ACB',
+  '#2068C4'
 ]
 
-const mockPalette = ['#FFD165', '#FF6A6A', '#6BCB77', '#4D96FF', '#F5A2C6', '#FBBF24', '#A3E635', '#C084FC', '#38BDF8', '#FB7185', '#FEC652', '#34D399', '#FF8C21', '#A0D668', '#80B0E0']
+const mockPalette = [
+  '#FFD165',
+  '#FF6A6A',
+  '#6BCB77',
+  '#4D96FF',
+  '#F5A2C6',
+  '#FBBF24',
+  '#A3E635',
+  '#C084FC',
+  '#38BDF8',
+  '#FB7185',
+  '#FEC652',
+  '#34D399',
+  '#FF8C21',
+  '#A0D668',
+  '#80B0E0'
+]
 const randomMockColor = () => mockPalette[Math.floor(Math.random() * mockPalette.length)]
 
 const heroBeadStyle = (i: number) => {
@@ -224,7 +353,7 @@ const heroBeadStyle = (i: number) => {
     background: colors[i % colors.length],
     borderRadius: `${4 + (i % 3) * 2}px`,
     animationDelay: `${(i * 0.03).toFixed(2)}s`,
-    animationDuration: `${3 + (i % 4)}s`,
+    animationDuration: `${3 + (i % 4)}s`
   }
 }
 
@@ -268,7 +397,6 @@ const scrollTo = (id: string) => {
 }
 
 @keyframes heroPulse {
-
   0%,
   100% {
     opacity: 0.3;
@@ -298,6 +426,29 @@ const scrollTo = (id: string) => {
 
 .hero-badge {
   margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.github-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.55);
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.github-link:hover {
+  color: #fff;
+  transform: scale(1.15);
+}
+
+.github-icon {
+  display: block;
 }
 
 .hero-title {

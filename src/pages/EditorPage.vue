@@ -2,20 +2,30 @@
   <div class="editor-page">
     <el-container class="root-container">
       <el-container>
-        <el-aside :width="isCollapsed ? '0px' : '300px'" class="aside" :class="{ 'collapsed': isCollapsed }">
+        <el-aside
+          :width="isCollapsed ? '0px' : '300px'"
+          class="aside"
+          :class="{ collapsed: isCollapsed }"
+        >
           <UploadSection />
           <Controls @generate="generatePattern" @download="downloadPattern" />
           <PatternInfo />
         </el-aside>
         <div class="main-wrapper">
           <el-main class="main">
-            <el-button v-if="isCollapsed" class="sidebar-toggle-fab" @click="toggleSidebar" circle size="small">
+            <el-button
+              v-if="isCollapsed"
+              class="sidebar-toggle-fab"
+              circle
+              size="small"
+              @click="toggleSidebar"
+            >
               <el-icon :size="18">
                 <Expand />
               </el-icon>
             </el-button>
             <el-tabs v-model="activeTab" class="main-tabs">
-              <el-tab-pane style="height: 100%;" label="原图预览" name="original">
+              <el-tab-pane style="height: 100%" label="原图预览" name="original">
                 <template #label>
                   <el-icon>
                     <Picture />
@@ -25,7 +35,7 @@
                 <SourceImageCard />
               </el-tab-pane>
 
-              <el-tab-pane style="height: 100%;" label="拼豆图纸" name="pattern">
+              <el-tab-pane style="height: 100%" label="拼豆图纸" name="pattern">
                 <template #label>
                   <el-icon>
                     <Grid />
@@ -35,7 +45,7 @@
                 <PreviewSection ref="previewSection" />
               </el-tab-pane>
 
-              <el-tab-pane style="height: 100%;" label="导出预览" name="export">
+              <el-tab-pane style="height: 100%" label="导出预览" name="export">
                 <template #label>
                   <el-icon>
                     <Download />
@@ -47,11 +57,21 @@
             </el-tabs>
           </el-main>
           <el-footer height="180px" class="editor-footer">
-            <EditPalette :palette="effectivePalette" :brand-palette="brandPalette" :active-color="selectedEditColor"
-              :edit-mode="editMode" :selected-tool="selectedTool" :can-undo="undoStack.length > 0"
-              :can-redo="redoStack.length > 0" @select="onEditSelectColor" @fill-all="onEditFillAll" @undo="onEditUndo"
-              @redo="onEditRedo" @update:edit-mode="appStore.setEditMode($event)"
-              @update:selected-tool="appStore.setSelectedTool($event)" />
+            <EditPalette
+              :palette="effectivePalette"
+              :brand-palette="brandPalette"
+              :active-color="selectedEditColor"
+              :edit-mode="editMode"
+              :selected-tool="selectedTool"
+              :can-undo="undoStack.length > 0"
+              :can-redo="redoStack.length > 0"
+              @select="onEditSelectColor"
+              @fill-all="onEditFillAll"
+              @undo="onEditUndo"
+              @redo="onEditRedo"
+              @update:edit-mode="appStore.setEditMode($event)"
+              @update:selected-tool="appStore.setSelectedTool($event)"
+            />
           </el-footer>
         </div>
       </el-container>
@@ -82,7 +102,7 @@ const {
   redoStack,
   effectivePalette,
   perlerColors,
-  selectedBrand,
+  selectedBrand
 } = storeToRefs(appStore)
 
 const brandPalette = computed(() => buildBrandPalette(perlerColors.value, selectedBrand.value))
@@ -144,7 +164,7 @@ const onEditRedo = () => {
   height: 100%;
 }
 
-.root-container>.el-container {
+.root-container > .el-container {
   flex: 1;
   min-height: 0;
 }

@@ -8,13 +8,25 @@
     </h3>
     <el-card class="upload-card" shadow="hover">
       <div class="upload-content">
-        <el-button type="success" size="large" class="upload-btn" @click="uploadDialogVisible = true" :icon="Check">
+        <el-button
+          type="success"
+          size="large"
+          class="upload-btn"
+          @click="uploadDialogVisible = true"
+          :icon="Check"
+        >
           上传并裁剪
         </el-button>
       </div>
 
       <div v-if="previewUrl" class="image-preview">
-        <el-image :src="previewUrl" fit="cover" class="preview-img" :preview-src-list="[previewUrl]" preview-teleported>
+        <el-image
+          :src="previewUrl"
+          fit="cover"
+          class="preview-img"
+          :preview-src-list="[previewUrl]"
+          preview-teleported
+        >
           <template #error>
             <div class="image-error">
               <el-icon class="error-icon">
@@ -28,33 +40,35 @@
     </el-card>
   </div>
 
-  <UploadDialog :visible="uploadDialogVisible" @update:visible="uploadDialogVisible = $event"
-    @confirm="handleUploadConfirm" />
+  <UploadDialog
+    :visible="uploadDialogVisible"
+    @update:visible="uploadDialogVisible = $event"
+    @confirm="handleUploadConfirm"
+  />
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { storeToRefs } from 'pinia';
-import { UploadFilled, Check, Picture } from '@element-plus/icons-vue';
-import UploadDialog from './UploadDialog.vue';
-import { useAppStore } from '../store/appStore';
-import type { UploadedCropResult } from '../types';
+import { ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { UploadFilled, Check, Picture } from '@element-plus/icons-vue'
+import UploadDialog from './UploadDialog.vue'
+import { useAppStore } from '../store/appStore'
+import type { UploadedCropResult } from '../types'
 
-const appStore = useAppStore();
-const { originalImageUrl } = storeToRefs(appStore);
+const appStore = useAppStore()
+const { originalImageUrl } = storeToRefs(appStore)
 
-const previewUrl = ref<string>(originalImageUrl.value || '');
+const previewUrl = ref<string>(originalImageUrl.value || '')
 
 watch(originalImageUrl, (value: string) => {
-  previewUrl.value = value;
-});
+  previewUrl.value = value
+})
 
-const uploadDialogVisible = ref<boolean>(false);
+const uploadDialogVisible = ref<boolean>(false)
 
 const handleUploadConfirm = (data: UploadedCropResult) => {
-  previewUrl.value = data.url;
-};
-
+  previewUrl.value = data.url
+}
 </script>
 
 <style scoped>
@@ -74,7 +88,7 @@ const handleUploadConfirm = (data: UploadedCropResult) => {
 
 .title-icon {
   font-size: 18px;
-  color: #409EFF;
+  color: #409eff;
 }
 
 .upload-card {

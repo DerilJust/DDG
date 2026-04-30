@@ -11,7 +11,6 @@
     <el-card class="controls-card" :body-style="{ padding: '0px' }">
       <div class="form-wrapper">
         <el-form label-width="80px" label-position="left">
-
           <!-- 网格宽度 -->
           <el-form-item label="宽度">
             <div class="slider-row">
@@ -47,7 +46,14 @@
           <!-- 颜色数量 -->
           <el-form-item label="颜色数量">
             <div class="slider-row">
-              <el-slider v-model="colorCount" :min="1" :max="50" :step="1" show-stops class="custom-slider" />
+              <el-slider
+                v-model="colorCount"
+                :min="1"
+                :max="50"
+                :step="1"
+                show-stops
+                class="custom-slider"
+              />
               <span class="value-label">{{ colorCount }}</span>
             </div>
           </el-form-item>
@@ -87,7 +93,6 @@
               <span :class="['switch-label', lockAspectRatio ? 'active-text' : '']">开启</span>
             </div>
           </el-form-item>
-
         </el-form>
       </div>
       <!-- 底部按钮 -->
@@ -95,12 +100,14 @@
         <el-button type="primary" class="btn-generate" @click="generatePattern">
           <el-icon>
             <MagicStick />
-          </el-icon> 生成图纸
+          </el-icon>
+          生成图纸
         </el-button>
         <el-button type="warning" class="btn-download" @click="downloadPattern">
           <el-icon>
             <Download />
-          </el-icon> 下载
+          </el-icon>
+          下载
         </el-button>
       </div>
     </el-card>
@@ -108,24 +115,25 @@
 </template>
 
 <script setup lang="ts">
-import { useAppStore } from '../store/appStore';
-import { storeToRefs } from 'pinia';
-import { useAspectRatioLock } from '../composables/useAspectRatioLock';
-import { MagicStick, Download, Setting } from '@element-plus/icons-vue';
+import { useAppStore } from '../store/appStore'
+import { storeToRefs } from 'pinia'
+import { useAspectRatioLock } from '../composables/useAspectRatioLock'
+import { MagicStick, Download, Setting } from '@element-plus/icons-vue'
 
-const emit = defineEmits(['download']);
-const appStore = useAppStore();
-const { gridWidth, gridHeight, colorCount, selectedBrand, showNumbers, lockAspectRatio } = storeToRefs(appStore);
+const emit = defineEmits(['download'])
+const appStore = useAppStore()
+const { gridWidth, gridHeight, colorCount, selectedBrand, showNumbers, lockAspectRatio } =
+  storeToRefs(appStore)
 
-const { imageRatio } = useAspectRatioLock();
+const { imageRatio } = useAspectRatioLock()
 
 const generatePattern = (): void => {
-  appStore.generatePattern();
-};
+  appStore.generatePattern()
+}
 
 const downloadPattern = (): void => {
-  emit('download');
-};
+  emit('download')
+}
 </script>
 
 <style scoped>

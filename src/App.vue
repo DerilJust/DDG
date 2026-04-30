@@ -37,7 +37,7 @@ const route = useRoute()
 const navItems = [
   { path: '/', label: '首页', icon: HomeFilled },
   { path: '/editor', label: '编辑器', icon: Edit },
-  { path: '/focus', label: '专注拼豆', icon: Aim },
+  { path: '/focus', label: '专注拼豆', icon: Aim }
 ]
 
 const isActive = (path: string): boolean => route.path === path
