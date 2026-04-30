@@ -37,7 +37,7 @@
                 <SourceImageCard />
               </el-tab-pane>
 
-              <el-tab-pane label="拼豆图纸" name="pattern">
+              <el-tab-pane style="height: 100%;" label="拼豆图纸" name="pattern">
                 <template #label>
                   <el-icon>
                     <Grid />
@@ -59,10 +59,11 @@
             </el-tabs>
           </el-main>
           <el-footer height="180px" class="editor-footer">
-            <EditPalette :palette="effectivePalette" :brand-palette="brandPalette" :active-color="selectedEditColor" :edit-mode="editMode"
-              :selected-tool="selectedTool" :can-undo="undoStack.length > 0" :can-redo="redoStack.length > 0"
-              @select="onEditSelectColor" @fill-all="onEditFillAll" @undo="onEditUndo" @redo="onEditRedo"
-              @update:edit-mode="appStore.setEditMode($event)" @update:selected-tool="appStore.setSelectedTool($event)" />
+            <EditPalette :palette="effectivePalette" :brand-palette="brandPalette" :active-color="selectedEditColor"
+              :edit-mode="editMode" :selected-tool="selectedTool" :can-undo="undoStack.length > 0"
+              :can-redo="redoStack.length > 0" @select="onEditSelectColor" @fill-all="onEditFillAll" @undo="onEditUndo"
+              @redo="onEditRedo" @update:edit-mode="appStore.setEditMode($event)"
+              @update:selected-tool="appStore.setSelectedTool($event)" />
           </el-footer>
         </div>
       </el-container>
@@ -117,8 +118,8 @@ const generatePattern = (): void => {
 };
 
 const downloadPattern = (): void => {
-  const canvas = previewSection.value?.patternCanvas;
-  if (!canvas || canvas.width === 0) {
+  const canvas = previewSection.value?.getFullResCanvas?.();
+  if (!canvas) {
     alert('请先生成拼豆图纸');
     return;
   }
@@ -246,7 +247,6 @@ h1.title {
 
 .main {
   background: white;
-  margin: 16px 16px 0 16px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.08);
   overflow: hidden;
   display: flex;
@@ -258,6 +258,7 @@ h1.title {
   flex: 1;
   display: flex;
   flex-direction: column;
+  height: 100%;
 }
 
 .main-tabs :deep(.el-tabs__header) {
@@ -301,14 +302,19 @@ h1.title {
 
 .main-tabs :deep(.el-tabs__content) {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 0;
   overflow: hidden;
 }
 
 .main-tabs :deep(.el-tab-pane) {
-  height: 100%;
-  padding: 20px;
-  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  min-height: 0;
 }
 
 /**
@@ -356,11 +362,9 @@ h1.title {
 
 .editor-footer {
   flex-shrink: 0;
-  margin: 8px 16px 16px 16px;
   padding: 10px 16px;
   background: #fff;
   border: 1px solid #e4e7ed;
-  border-radius: 8px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.06);
 }
 </style>
