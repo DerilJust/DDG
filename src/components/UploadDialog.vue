@@ -173,9 +173,9 @@
       <el-button @click="handleCancel">取消</el-button>
       <el-button
         type="primary"
-        @click="handleConfirm"
         :disabled="!selectedFile || !cropRect.visible"
         :loading="isProcessing"
+        @click="handleConfirm"
       >
         确认并生成图纸
       </el-button>
