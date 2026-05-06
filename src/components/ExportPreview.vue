@@ -45,6 +45,7 @@ import { Download, CopyDocument } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAppStore } from '../store/appStore'
 import { compressPatternGrid } from '../utils/compressionUtils'
+import { drawPatternToCanvas } from '../utils/patternRenderer'
 
 const appStore = useAppStore()
 const {
@@ -69,17 +70,11 @@ const compressedData = computed(() => {
   )
 })
 
-const getContrastColor = (r: number, g: number, b: number): string => {
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000
-  return brightness > 128 ? '#000000' : '#ffffff'
-}
-
 const generatePreview = (): void => {
   if (!previewCanvas.value || !patternGrid.value.length) return
 
   const cellSize = showNumbers.value ? 20 : 10
   const axisMargin = showNumbers.value ? 44 : 12
-  const labelInterval = cellSize >= 20 ? 1 : 5
 
   const tempCanvas = document.createElement('canvas')
   const tempCtx = tempCanvas.getContext('2d')
@@ -88,96 +83,14 @@ const generatePreview = (): void => {
   tempCanvas.width = gridWidth.value * cellSize + axisMargin * 2
   tempCanvas.height = gridHeight.value * cellSize + axisMargin * 2
 
-  for (let y = 0; y < gridHeight.value; y++) {
-    for (let x = 0; x < gridWidth.value; x++) {
-      const cell = patternGrid.value[y]?.[x]
-      if (!cell) continue
-      const cellX = axisMargin + x * cellSize
-      const cellY = axisMargin + y * cellSize
-
-      tempCtx.fillStyle = `rgb(${cell.color.r}, ${cell.color.g}, ${cell.color.b})`
-      tempCtx.fillRect(cellX, cellY, cellSize, cellSize)
-
-      const isGridLine5X = x % 5 === 4
-      const isGridLine5Y = y % 5 === 4
-      const isGridLine5 = isGridLine5X || isGridLine5Y
-
-      tempCtx.strokeStyle = isGridLine5 ? '#333' : '#ddd'
-      tempCtx.lineWidth = isGridLine5 ? 1.5 : 0.5
-      tempCtx.strokeRect(cellX, cellY, cellSize, cellSize)
-
-      if (showNumbers.value && cell.code) {
-        const colorCode = cell.code
-        let fontSize = cellSize * 0.55
-        tempCtx.font = `${fontSize}px Arial`
-        const textWidth = tempCtx.measureText(colorCode).width
-        if (textWidth > cellSize * 0.75) {
-          fontSize = ((cellSize * 0.75) / textWidth) * fontSize
-          tempCtx.font = `${fontSize}px Arial`
-        }
-        const textX = cellX + cellSize / 2
-        const textY = cellY + cellSize / 2
-
-        tempCtx.textAlign = 'center'
-        tempCtx.textBaseline = 'middle'
-        tempCtx.strokeStyle = 'rgba(0, 0, 0, 0.18)'
-        tempCtx.lineWidth = 2
-        tempCtx.strokeText(colorCode, textX, textY)
-        tempCtx.fillStyle = getContrastColor(cell.color.r, cell.color.g, cell.color.b)
-        tempCtx.fillText(colorCode, textX, textY)
-      }
-    }
-  }
-
-  if (showNumbers.value) {
-    tempCtx.save()
-    tempCtx.fillStyle = '#fff'
-    tempCtx.fillRect(0, 0, tempCanvas.width, axisMargin)
-    tempCtx.fillRect(0, 0, axisMargin, tempCanvas.height)
-    tempCtx.fillRect(0, tempCanvas.height - axisMargin, tempCanvas.width, axisMargin)
-    tempCtx.fillRect(tempCanvas.width - axisMargin, 0, axisMargin, tempCanvas.height)
-
-    tempCtx.strokeStyle = '#666'
-    tempCtx.lineWidth = 1.5
-    tempCtx.beginPath()
-    tempCtx.moveTo(axisMargin, axisMargin)
-    tempCtx.lineTo(axisMargin, tempCanvas.height - axisMargin)
-    tempCtx.moveTo(axisMargin, axisMargin)
-    tempCtx.lineTo(tempCanvas.width - axisMargin, axisMargin)
-    tempCtx.stroke()
-
-    tempCtx.fillStyle = '#333'
-    tempCtx.font = 'bold 12px Arial'
-    tempCtx.textBaseline = 'middle'
-
-    for (let i = 0; i < gridWidth.value; i++) {
-      if (i === 0 || i === gridWidth.value - 1 || (i + 1) % labelInterval === 0) {
-        const label = `${i + 1}`
-        const x = axisMargin + i * cellSize + cellSize / 2
-        const topY = axisMargin / 2
-        const bottomY = tempCanvas.height - axisMargin / 2
-
-        tempCtx.textAlign = 'center'
-        tempCtx.fillText(label, x, topY)
-        tempCtx.fillText(label, x, bottomY)
-      }
-    }
-
-    for (let i = 0; i < gridHeight.value; i++) {
-      if (i === 0 || i === gridHeight.value - 1 || (i + 1) % labelInterval === 0) {
-        const label = `${i + 1}`
-        const y = axisMargin + i * cellSize + cellSize / 2
-        const leftX = axisMargin / 2
-        const rightX = tempCanvas.width - axisMargin / 2
-
-        tempCtx.textAlign = 'right'
-        tempCtx.fillText(label, leftX, y)
-        tempCtx.textAlign = 'left'
-        tempCtx.fillText(label, rightX, y)
-      }
-    }
-    tempCtx.restore()
-  }
+  drawPatternToCanvas(tempCtx, tempCanvas, patternGrid.value, {
+    gridWidth: gridWidth.value,
+    gridHeight: gridHeight.value,
+    cellSize,
+    axisMargin,
+    showNumbers: showNumbers.value,
+    gridLineInterval: 5
+  })
 
   const columns = 3
   const rowHeight = 48

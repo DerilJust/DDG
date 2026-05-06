@@ -1,12 +1,29 @@
 import type { PatternCell, PerlerColor } from './patternUtils'
 import colorSystemMapping from '../colorMap/colorSystemMapping.json'
 
+/**
+ * 压缩拼豆图纸为字符串。
+ * 格式: BRAND:WxH|palette|runs
+ * - palette: 逗号分隔的唯一颜色代码列表（索引即位置）
+ * - runs: 逗号分隔的游程，格式为 `count:index`（count=1 时省略为 `index`）
+ */
 export function compressPatternGrid(
   patternGrid: PatternCell[][],
   gridWidth: number,
   gridHeight: number,
   selectedBrand: string
 ): string {
+  const codeToIndex: Record<string, number> = {}
+  const palette: string[] = []
+
+  const getIndex = (code: string): number => {
+    if (codeToIndex[code] === undefined) {
+      codeToIndex[code] = palette.length
+      palette.push(code)
+    }
+    return codeToIndex[code]
+  }
+
   const runs: string[] = []
   let currentCode: string | null = null
   let currentCount = 0
@@ -20,7 +37,8 @@ export function compressPatternGrid(
         currentCount++
       } else {
         if (currentCount > 0 && currentCode !== null) {
-          runs.push(`${currentCount}:${currentCode}`)
+          const idx = getIndex(currentCode)
+          runs.push(currentCount === 1 ? `${idx}` : `${currentCount}:${idx}`)
         }
         currentCode = code
         currentCount = 1
@@ -29,10 +47,11 @@ export function compressPatternGrid(
   }
 
   if (currentCount > 0 && currentCode !== null) {
-    runs.push(`${currentCount}:${currentCode}`)
+    const idx = getIndex(currentCode)
+    runs.push(currentCount === 1 ? `${idx}` : `${currentCount}:${idx}`)
   }
 
-  return `${gridWidth}x${gridHeight}|${runs.join(',')}`
+  return `${selectedBrand}:${gridWidth}x${gridHeight}|${palette.join(',')}|${runs.join(',')}`
 }
 
 export function buildReverseBrandMapping(brand: string): Record<string, string> {
@@ -54,37 +73,59 @@ function hexToColor(hex: string): PerlerColor {
 }
 
 export function decompressPatternGrid(
-  compressed: string,
-  selectedBrand: string
+  compressed: string
 ): { patternGrid: PatternCell[][]; gridWidth: number; gridHeight: number } | null {
   try {
-    const pipeIdx = compressed.indexOf('|')
-    if (pipeIdx === -1) return null
-    const header = compressed.substring(0, pipeIdx)
-    const runsStr = compressed.substring(pipeIdx + 1)
-    const dims = header.split('x')
+    const parts = compressed.split('|')
+    if (parts.length !== 3) return null
+
+    const [header, paletteStr, runsStr] = parts
+
+    const colonIdx = header.indexOf(':')
+    if (colonIdx === -1) return null
+    const brand = header.substring(0, colonIdx)
+    const dimsStr = header.substring(colonIdx + 1)
+
+    const dims = dimsStr.split('x')
     const gridWidth = parseInt(dims[0])
     const gridHeight = parseInt(dims[1])
     if (isNaN(gridWidth) || isNaN(gridHeight) || gridWidth <= 0 || gridHeight <= 0) return null
 
-    const reverseMap = buildReverseBrandMapping(selectedBrand)
-    const runs = runsStr.split(',')
+    const palette = paletteStr ? paletteStr.split(',') : []
+    const reverseMap = buildReverseBrandMapping(brand)
+
+    const paletteLookup: { color: PerlerColor; code: string }[] = palette.map((code) => {
+      if (code === '_') {
+        return { color: hexToColor('#FFFFFF'), code: '' }
+      }
+      const hex = reverseMap[code] || '#FFFFFF'
+      return { color: hexToColor(hex), code }
+    })
+
+    const runs = runsStr ? runsStr.split(',') : []
     const grid: PatternCell[][] = []
     let currentRow: PatternCell[] = []
 
     for (const run of runs) {
+      let count: number
+      let index: number
+
       const colonIdx = run.indexOf(':')
-      if (colonIdx === -1) return null
-      const count = parseInt(run.substring(0, colonIdx))
-      const code = run.substring(colonIdx + 1)
-      if (isNaN(count) || count <= 0) return null
+      if (colonIdx === -1) {
+        count = 1
+        index = parseInt(run)
+      } else {
+        count = parseInt(run.substring(0, colonIdx))
+        index = parseInt(run.substring(colonIdx + 1))
+      }
 
-      const hex = code === '_' ? '#FFFFFF' : reverseMap[code] || '#FFFFFF'
-      const color = hexToColor(hex)
-      const finalCode = code === '_' ? '' : code
+      if (isNaN(count) || count <= 0 || isNaN(index) || index < 0 || index >= paletteLookup.length) {
+        return null
+      }
 
+      const entry = paletteLookup[index]
       for (let i = 0; i < count; i++) {
-        currentRow.push({ color, code: finalCode })
+        currentRow.push({ color: entry.color, code: entry.code })
         if (currentRow.length === gridWidth) {
           grid.push(currentRow)
           currentRow = []

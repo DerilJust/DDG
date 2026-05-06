@@ -12,8 +12,8 @@
           type="success"
           size="large"
           class="upload-btn"
-          @click="uploadDialogVisible = true"
           :icon="Check"
+          @click="uploadDialogVisible = true"
         >
           上传并裁剪
         </el-button>

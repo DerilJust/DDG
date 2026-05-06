@@ -1,5 +1,10 @@
 # CLAUDE.md
 
+## Language
+
+- 尽量在对话和记录中使用中文
+- CLAUDE.md中已有的英文不需要修改成中文
+
 ## Project Overview
 
 拼豆图纸生成器 (Perler Bead Pattern Generator) -- a browser-based tool for generating
