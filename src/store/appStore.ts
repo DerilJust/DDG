@@ -10,6 +10,7 @@ import {
   buildColorStats
 } from '../utils/patternUtils'
 import { clonePatternGrid, fillConnectedRegion } from '../utils/editUtils'
+import { decompressPatternGrid } from '../utils/compressionUtils'
 import type { AppStoreState } from '../types'
 import type { PendingSelection } from '../utils/selectionUtils'
 
@@ -302,6 +303,32 @@ export const useAppStore = defineStore('app', {
       this.refreshColorStats()
       this.selectedEditColor = this.selectedEditColor || this.patternPalette[0]?.color || null
       this.infoText = `拼豆图纸已生成: ${this.gridWidth}x${this.gridHeight} 网格, ${this.colorCount} 种颜色`
+    },
+
+    importFromCompressed(compressed: string): boolean {
+      const result = decompressPatternGrid(compressed)
+      if (!result) return false
+
+      this.patternGrid = result.patternGrid
+      this.gridWidth = result.gridWidth
+      this.gridHeight = result.gridHeight
+
+      const colonIdx = compressed.indexOf(':')
+      if (colonIdx > 0) {
+        this.selectedBrand = compressed.substring(0, colonIdx)
+      }
+
+      this.originalImage = null
+      this.originalImageUrl = ''
+      this.originalImageSize = { width: 0, height: 0 }
+
+      if (!this.perlerColors.length) {
+        this.loadColorData()
+      }
+
+      this.refreshColorStats()
+      this.infoText = `已导入拼豆图纸: ${result.gridWidth}x${result.gridHeight} 网格, ${this.colorStats.length} 种颜色`
+      return true
     }
   }
 })

@@ -1,24 +1,119 @@
 <template>
-  <div class="focus-placeholder">
-    <el-result icon="info" title="功能开发中" sub-title="专注拼豆功能即将上线，敬请期待！">
-      <template #extra>
-        <router-link to="/editor">
-          <el-button type="primary">
-            <el-icon><Edit /></el-icon>
-            返回编辑器
-          </el-button>
-        </router-link>
-      </template>
-    </el-result>
+  <div class="focus-page">
+    <el-container class="root-container">
+      <el-aside width="300px" class="aside">
+        <ImportSection ref="importSectionRef" @import="handleImport" />
+        <ColorHighlightList
+          v-if="colorStats.length > 0"
+          :color-stats="colorStats"
+          :highlighted-keys="highlightedKeys"
+          @toggle-highlight="toggleHighlight"
+        />
+      </el-aside>
+
+      <el-main class="main">
+        <div v-if="patternGrid.length && gridWidth > 0" class="viewer-wrapper">
+          <PatternViewer :highlighted-color-keys="highlightedKeys" />
+        </div>
+        <div v-else class="empty-state">
+          <el-empty description="请粘贴压缩数据导入图纸，或从编辑器页面生成图纸后跳转至此">
+            <template #extra>
+              <router-link to="/editor">
+                <el-button type="primary">
+                  <el-icon><Edit /></el-icon>
+                  前往编辑器
+                </el-button>
+              </router-link>
+            </template>
+          </el-empty>
+        </div>
+      </el-main>
+    </el-container>
   </div>
 </template>
 
 <script setup lang="ts">
+import { onMounted, reactive, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { Edit } from '@element-plus/icons-vue'
+import { useAppStore } from '../store/appStore'
+import ImportSection from '../components/ImportSection.vue'
+import ColorHighlightList from '../components/ColorHighlightList.vue'
+import PatternViewer from '../components/PatternViewer.vue'
+
+const appStore = useAppStore()
+const { patternGrid, gridWidth, colorStats, perlerColors } = storeToRefs(appStore)
+
+const importSectionRef = ref<InstanceType<typeof ImportSection> | null>(null)
+const highlightedKeys = reactive(new Set<string>())
+
+function toggleHighlight(key: string) {
+  if (highlightedKeys.has(key)) {
+    highlightedKeys.delete(key)
+  } else {
+    highlightedKeys.add(key)
+  }
+}
+
+function handleImport(compressed: string) {
+  const success = appStore.importFromCompressed(compressed)
+  if (success) {
+    importSectionRef.value?.setStatus('导入成功', 'success')
+    highlightedKeys.clear()
+  } else {
+    importSectionRef.value?.setStatus('导入失败：压缩数据格式无效', 'error')
+  }
+}
+
+onMounted(() => {
+  if (!perlerColors.value.length) {
+    appStore.loadColorData()
+  }
+  if (patternGrid.value.length && colorStats.value.length === 0) {
+    appStore.refreshColorStats()
+  }
+})
 </script>
 
 <style scoped>
-.focus-placeholder {
+.focus-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.root-container {
+  height: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+.aside {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  border-right: 1px solid #e4e7ed;
+  background: #fafafa;
+  overflow-y: auto;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.viewer-wrapper {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.empty-state {
   flex: 1;
   display: flex;
   align-items: center;

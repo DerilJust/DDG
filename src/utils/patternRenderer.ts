@@ -14,6 +14,7 @@ export interface RenderOptions {
   }
   majorGridLineWidth: number
   minorGridLineWidth: number
+  highlightedColorKeys?: Set<string>
 }
 
 export const DEFAULT_RENDER_OPTIONS: RenderOptions = {
@@ -176,8 +177,15 @@ export function drawPatternToCanvas(
 
       const { cellX, cellY } = calculateCellPosition(x, y, cellSize, axisMargin, gridLineInterval)
 
+      const highlightActive = opts.highlightedColorKeys && opts.highlightedColorKeys.size > 0
+      if (highlightActive) {
+        const key = `${cell.color.r},${cell.color.g},${cell.color.b}`
+        ctx.globalAlpha = opts.highlightedColorKeys!.has(key) ? 1.0 : 0.25
+      }
+
       ctx.fillStyle = `rgb(${cell.color.r}, ${cell.color.g}, ${cell.color.b})`
       ctx.fillRect(cellX, cellY, cellSize, cellSize)
+      ctx.globalAlpha = 1.0
 
       if (showNumbers && cellSize >= 20 && cell.code) {
         const colorCode = cell.code
