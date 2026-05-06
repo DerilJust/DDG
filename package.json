@@ -10,7 +10,10 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "type-check": "vue-tsc -b"
+    "type-check": "vue-tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "element-plus": "^2.8.4",
@@ -22,13 +25,17 @@
     "@types/node": "^24.12.0",
     "@typescript-eslint/parser": "^8.59.1",
     "@vitejs/plugin-vue": "^6.0.5",
+    "@vitest/coverage-v8": "^4.1.5",
+    "@vue/test-utils": "^2.4.10",
     "@vue/tsconfig": "^0.9.1",
     "eslint": "^10.2.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.9.0",
+    "happy-dom": "^20.9.0",
     "prettier": "^3.8.3",
     "typescript": "~5.9.3",
     "vite": "^8.0.1",
+    "vitest": "^4.1.5",
     "vue-tsc": "^3.2.5"
   }
 }
