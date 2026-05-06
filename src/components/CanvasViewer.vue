@@ -2,20 +2,20 @@
   <div class="canvas-viewer-wrapper">
     <!-- Canvas容器，支持缩放和拖拖 -->
     <div
-      class="canvas-viewer-container"
       ref="container"
+      class="canvas-viewer-container"
+      :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
       @wheel.prevent="handleWheel"
       @mousedown="handleMouseDown"
       @mousemove="handleMouseMove"
       @mouseup="handleMouseUp"
       @mouseleave="handleMouseUp"
-      :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
     >
       <!-- 变换容器，通过CSS transform实现缩放和平移 -->
       <div class="canvas-transform" :style="transformStyle">
         <canvas
-          ref="patternCanvas"
           id="pattern-canvas"
+          ref="patternCanvas"
           class="pattern-canvas"
           @pointerdown.stop="handleCanvasPointerDown"
           @pointermove="handleCanvasPointerMove"

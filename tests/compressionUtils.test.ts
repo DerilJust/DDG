@@ -17,26 +17,26 @@ const green = makeColor(255, 255, 213, '#FFFFD5', { MARD: 'A02', COCO: 'E01' })
 
 describe('compressPatternGrid', () => {
   it('空grid产生正确格式', () => {
-    expect(compressPatternGrid([], 0, 0, 'MARD')).toBe('0x0|')
+    expect(compressPatternGrid([], 0, 0, 'MARD')).toBe('MARD:0x0||')
   })
 
-  it('单格压缩', () => {
+  it('单格压缩，count=1省略前缀', () => {
     const grid: PatternCell[][] = [[makeCell(red, 'A01')]]
-    expect(compressPatternGrid(grid, 1, 1, 'MARD')).toBe('1x1|1:A01')
+    expect(compressPatternGrid(grid, 1, 1, 'MARD')).toBe('MARD:1x1|A01|0')
   })
 
   it('两个连续同色格合并为一个run', () => {
     const grid: PatternCell[][] = [
       [makeCell(red, 'A01'), makeCell(red, 'A01')]
     ]
-    expect(compressPatternGrid(grid, 2, 1, 'MARD')).toBe('2x1|2:A01')
+    expect(compressPatternGrid(grid, 2, 1, 'MARD')).toBe('MARD:2x1|A01|2:0')
   })
 
-  it('两个不同色格不合并', () => {
+  it('两个不同色格不合并，count=1省略', () => {
     const grid: PatternCell[][] = [
       [makeCell(red, 'A01'), makeCell(green, 'A02')]
     ]
-    expect(compressPatternGrid(grid, 2, 1, 'MARD')).toBe('2x1|1:A01,1:A02')
+    expect(compressPatternGrid(grid, 2, 1, 'MARD')).toBe('MARD:2x1|A01,A02|0,1')
   })
 
   it('多行网格跨行也合并', () => {
@@ -44,29 +44,29 @@ describe('compressPatternGrid', () => {
       [makeCell(red, 'A01'), makeCell(red, 'A01')],
       [makeCell(red, 'A01'), makeCell(red, 'A01')]
     ]
-    expect(compressPatternGrid(grid, 2, 2, 'MARD')).toBe('2x2|4:A01')
+    expect(compressPatternGrid(grid, 2, 2, 'MARD')).toBe('MARD:2x2|A01|4:0')
   })
 
   it('无品牌信息的颜色用_代替', () => {
     const noBrand = makeColor(100, 100, 100, '#646464')
     const grid: PatternCell[][] = [[makeCell(noBrand, '')]]
-    expect(compressPatternGrid(grid, 1, 1, 'MARD')).toBe('1x1|1:_')
+    expect(compressPatternGrid(grid, 1, 1, 'MARD')).toBe('MARD:1x1|_|0')
   })
 
-  it('不同品牌产生不同代码', () => {
+  it('不同品牌产生不同代码，品牌写入头部', () => {
     const grid: PatternCell[][] = [[makeCell(red, 'A01')]]
     const resultMard = compressPatternGrid(grid, 1, 1, 'MARD')
     const resultCoco = compressPatternGrid(grid, 1, 1, 'COCO')
-    expect(resultMard).toBe('1x1|1:A01')
-    expect(resultCoco).toBe('1x1|1:E02')
+    expect(resultMard).toBe('MARD:1x1|A01|0')
+    expect(resultCoco).toBe('COCO:1x1|E02|0')
   })
 
-  it('空行正确处理', () => {
+  it('空行正确处理（白色用_）', () => {
     const white = makeColor(255, 255, 255, '#FFFFFF')
     const grid: PatternCell[][] = [
       [makeCell(white, ''), makeCell(white, '')]
     ]
-    expect(compressPatternGrid(grid, 2, 1, 'MARD')).toBe('2x1|2:_')
+    expect(compressPatternGrid(grid, 2, 1, 'MARD')).toBe('MARD:2x1|_|2:0')
   })
 })
 
@@ -95,7 +95,7 @@ describe('decompressPatternGrid', () => {
       [makeCell(green, 'A02'), makeCell(red, 'A01')]
     ]
     const compressed = compressPatternGrid(grid, 2, 2, 'MARD')
-    const decompressed = decompressPatternGrid(compressed, 'MARD')
+    const decompressed = decompressPatternGrid(compressed)
     expect(decompressed).not.toBeNull()
     expect(decompressed!.gridWidth).toBe(2)
     expect(decompressed!.gridHeight).toBe(2)
@@ -109,43 +109,47 @@ describe('decompressPatternGrid', () => {
     const white = makeColor(255, 255, 255, '#FFFFFF')
     const grid: PatternCell[][] = [[makeCell(white, '')]]
     const compressed = compressPatternGrid(grid, 1, 1, 'MARD')
-    const decompressed = decompressPatternGrid(compressed, 'MARD')
+    const decompressed = decompressPatternGrid(compressed)
     expect(decompressed!.patternGrid[0][0].code).toBe('')
   })
 
   it('缺少|返回null', () => {
-    expect(decompressPatternGrid('30x30', 'MARD')).toBeNull()
+    expect(decompressPatternGrid('30x30')).toBeNull()
   })
 
-  it('无效宽度(gridWidth<=0)返回null', () => {
-    expect(decompressPatternGrid('0x30|1:A01', 'MARD')).toBeNull()
+  it('无效宽度返回null', () => {
+    expect(decompressPatternGrid('MARD:0x30|A01|0')).toBeNull()
   })
 
-  it('无效高度(gridHeight<=0)返回null', () => {
-    expect(decompressPatternGrid('30x0|1:A01', 'MARD')).toBeNull()
+  it('无效高度返回null', () => {
+    expect(decompressPatternGrid('MARD:30x0|A01|0')).toBeNull()
   })
 
   it('负数尺寸返回null', () => {
-    expect(decompressPatternGrid('-1x30|1:A01', 'MARD')).toBeNull()
+    expect(decompressPatternGrid('MARD:-1x30|A01|0')).toBeNull()
   })
 
   it('NaN尺寸返回null', () => {
-    expect(decompressPatternGrid('abcx30|1:A01', 'MARD')).toBeNull()
+    expect(decompressPatternGrid('MARD:abcx30|A01|0')).toBeNull()
   })
 
-  it('run中缺少:返回null', () => {
-    expect(decompressPatternGrid('1x1|1A01', 'MARD')).toBeNull()
+  it('头部缺少品牌返回null', () => {
+    expect(decompressPatternGrid('30x30|palette|runs')).toBeNull()
   })
 
   it('count为0返回null', () => {
-    expect(decompressPatternGrid('1x1|0:A01', 'MARD')).toBeNull()
+    expect(decompressPatternGrid('MARD:1x1|A01|0:0')).toBeNull()
   })
 
   it('count为NaN返回null', () => {
-    expect(decompressPatternGrid('1x1|abc:A01', 'MARD')).toBeNull()
+    expect(decompressPatternGrid('MARD:1x1|A01|abc:0')).toBeNull()
+  })
+
+  it('palette索引越界返回null', () => {
+    expect(decompressPatternGrid('MARD:1x1|A01|1')).toBeNull()
   })
 
   it('行数不匹配返回null', () => {
-    expect(decompressPatternGrid('1x2|1:A01', 'MARD')).toBeNull()
+    expect(decompressPatternGrid('MARD:1x2|A01|0')).toBeNull()
   })
 })
