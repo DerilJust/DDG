@@ -15,9 +15,9 @@
                 <div class="slider-row">
                   <el-input-number
                     v-model="gridWidth"
-                    :min="1"
+                    :min="5"
                     :max="1000"
-                    :step="1"
+                    :step="5"
                     :controls="true"
                     size="small"
                     class="custom-input-number"
@@ -30,9 +30,9 @@
                 <div class="slider-row">
                   <el-input-number
                     v-model="gridHeight"
-                    :min="1"
+                    :min="5"
                     :max="1000"
-                    :step="1"
+                    :step="5"
                     :controls="true"
                     size="small"
                     class="custom-input-number"
@@ -193,6 +193,7 @@ import { useAppStore } from '../store/appStore'
 import { useAspectRatioLock } from '../composables/useAspectRatioLock'
 import { UploadFilled, PictureFilled } from '@element-plus/icons-vue'
 import type { CropperImageData, CroppedResult, UploadedCropResult } from '../types'
+import { ceilToMultipleOf5 } from '../utils/patternUtils'
 
 const props = defineProps<{ visible: boolean }>()
 const emit = defineEmits<{
@@ -308,9 +309,9 @@ const handleFileChange = (file: { raw: File }) => {
         if (lockAspectRatio.value && img.width && img.height) {
           const ratio = img.width / img.height
           if (ratio >= 1) {
-            appStore.setGridHeight(Math.max(1, Math.round(gridWidth.value / ratio)))
+            appStore.setGridHeight(ceilToMultipleOf5(Math.max(5, Math.round(gridWidth.value / ratio))))
           } else {
-            appStore.setGridWidth(Math.max(1, Math.round(gridHeight.value * ratio)))
+            appStore.setGridWidth(ceilToMultipleOf5(Math.max(5, Math.round(gridHeight.value * ratio))))
           }
         }
         nextTick(() => {
@@ -488,9 +489,9 @@ const applyPresetRatio = (name: string, ratio: number): void => {
 
   const currentMax = Math.max(gridWidth.value, gridHeight.value)
   if (ratio >= 1) {
-    appStore.setGridHeight(Math.max(1, Math.round(currentMax / ratio)))
+    appStore.setGridHeight(ceilToMultipleOf5(Math.max(5, Math.round(currentMax / ratio))))
   } else {
-    appStore.setGridWidth(Math.max(1, Math.round(currentMax * ratio)))
+    appStore.setGridWidth(ceilToMultipleOf5(Math.max(5, Math.round(currentMax * ratio))))
   }
 }
 

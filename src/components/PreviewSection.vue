@@ -29,6 +29,46 @@
           <el-button size="small" circle title="放大" @click="zoomIn"> + </el-button>
           <el-button size="small" title="重置视图" @click="resetViewport"> 重置 </el-button>
         </div>
+
+        <template v-if="editMode && patternGrid.length">
+          <div
+            class="edge-handle edge-handle-top"
+            :style="edgeTopStyle"
+            @pointerdown.stop.prevent="startEdgeDrag('top', $event)"
+            @pointermove="handleEdgeDragMove($event)"
+            @pointerup="handleEdgeDragUp"
+            @pointerleave="handleEdgeDragUp"
+          />
+          <div
+            class="edge-handle edge-handle-bottom"
+            :style="edgeBottomStyle"
+            @pointerdown.stop.prevent="startEdgeDrag('bottom', $event)"
+            @pointermove="handleEdgeDragMove($event)"
+            @pointerup="handleEdgeDragUp"
+            @pointerleave="handleEdgeDragUp"
+          />
+          <div
+            class="edge-handle edge-handle-left"
+            :style="edgeLeftStyle"
+            @pointerdown.stop.prevent="startEdgeDrag('left', $event)"
+            @pointermove="handleEdgeDragMove($event)"
+            @pointerup="handleEdgeDragUp"
+            @pointerleave="handleEdgeDragUp"
+          />
+          <div
+            class="edge-handle edge-handle-right"
+            :style="edgeRightStyle"
+            @pointerdown.stop.prevent="startEdgeDrag('right', $event)"
+            @pointermove="handleEdgeDragMove($event)"
+            @pointerup="handleEdgeDragUp"
+            @pointerleave="handleEdgeDragUp"
+          />
+          <div
+            v-if="edgeDragPreview"
+            class="edge-drag-preview"
+            :style="edgeDragPreviewStyle"
+          />
+        </template>
       </div>
     </div>
   </div>
@@ -164,6 +204,120 @@ const selectionOverlayStyle = computed<Record<string, string>>(() => {
     height: `${height}px`
   }
 })
+
+// --- 边缘扩展手柄 ---
+const gridPixelLeft = computed(() => viewOffsetX.value + viewScale.value * axisMargin.value)
+const gridPixelTop = computed(() => viewOffsetY.value + viewScale.value * axisMargin.value)
+const gridPixelRight = computed(
+  () => gridPixelLeft.value + viewScale.value * gridWidth.value * cellSize.value
+)
+const gridPixelBottom = computed(
+  () => gridPixelTop.value + viewScale.value * gridHeight.value * cellSize.value
+)
+
+const HANDLE_SIZE = 28
+
+const edgeTopStyle = computed(() => ({
+  left: `${(gridPixelLeft.value + gridPixelRight.value) / 2 - HANDLE_SIZE / 2}px`,
+  top: `${gridPixelTop.value - HANDLE_SIZE / 2}px`
+}))
+const edgeBottomStyle = computed(() => ({
+  left: `${(gridPixelLeft.value + gridPixelRight.value) / 2 - HANDLE_SIZE / 2}px`,
+  top: `${gridPixelBottom.value - HANDLE_SIZE / 2}px`
+}))
+const edgeLeftStyle = computed(() => ({
+  left: `${gridPixelLeft.value - HANDLE_SIZE / 2}px`,
+  top: `${(gridPixelTop.value + gridPixelBottom.value) / 2 - HANDLE_SIZE / 2}px`
+}))
+const edgeRightStyle = computed(() => ({
+  left: `${gridPixelRight.value - HANDLE_SIZE / 2}px`,
+  top: `${(gridPixelTop.value + gridPixelBottom.value) / 2 - HANDLE_SIZE / 2}px`
+}))
+
+const edgeDrag = ref<{
+  direction: 'top' | 'bottom' | 'left' | 'right'
+  originX: number
+  originY: number
+  cells: number
+} | null>(null)
+
+const edgeDragPreview = computed(() => edgeDrag.value !== null && edgeDrag.value.cells > 0)
+
+const edgeDragPreviewStyle = computed(() => {
+  if (!edgeDrag.value || edgeDrag.value.cells <= 0)
+    return { display: 'none' }
+  const d = edgeDrag.value
+  const cells = d.cells
+  const cellPx = viewScale.value * cellSize.value
+  if (d.direction === 'top') {
+    return {
+      left: `${gridPixelLeft.value}px`,
+      top: `${gridPixelTop.value - cells * cellPx}px`,
+      width: `${gridPixelRight.value - gridPixelLeft.value}px`,
+      height: `${cells * cellPx}px`,
+      display: 'block'
+    }
+  }
+  if (d.direction === 'bottom') {
+    return {
+      left: `${gridPixelLeft.value}px`,
+      top: `${gridPixelBottom.value}px`,
+      width: `${gridPixelRight.value - gridPixelLeft.value}px`,
+      height: `${cells * cellPx}px`,
+      display: 'block'
+    }
+  }
+  if (d.direction === 'left') {
+    return {
+      left: `${gridPixelLeft.value - cells * cellPx}px`,
+      top: `${gridPixelTop.value}px`,
+      width: `${cells * cellPx}px`,
+      height: `${gridPixelBottom.value - gridPixelTop.value}px`,
+      display: 'block'
+    }
+  }
+  return {
+    left: `${gridPixelRight.value}px`,
+    top: `${gridPixelTop.value}px`,
+    width: `${cells * cellPx}px`,
+    height: `${gridPixelBottom.value - gridPixelTop.value}px`,
+    display: 'block'
+  }
+})
+
+function startEdgeDrag(direction: 'top' | 'bottom' | 'left' | 'right', e: PointerEvent) {
+  if (!editMode.value) return
+  edgeDrag.value = { direction, originX: e.clientX, originY: e.clientY, cells: 0 }
+  if (e.currentTarget instanceof HTMLElement && e.pointerId != null) {
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+}
+
+function handleEdgeDragMove(e: PointerEvent) {
+  if (!edgeDrag.value) return
+  const d = edgeDrag.value
+  const dx = e.clientX - d.originX
+  const dy = e.clientY - d.originY
+  const cellPx = viewScale.value * cellSize.value
+  let dist = 0
+  if (d.direction === 'top') dist = -dy
+  else if (d.direction === 'bottom') dist = dy
+  else if (d.direction === 'left') dist = -dx
+  else if (d.direction === 'right') dist = dx
+  edgeDrag.value.cells = Math.max(0, Math.floor(dist / cellPx))
+}
+
+function handleEdgeDragUp(e: PointerEvent) {
+  if (!edgeDrag.value) return
+  const { cells, direction } = edgeDrag.value
+  edgeDrag.value = null
+  if (e.currentTarget instanceof HTMLElement && e.pointerId != null) {
+    e.currentTarget.releasePointerCapture(e.pointerId)
+  }
+  if (cells > 0) {
+    appStore.expandGrid(direction, cells)
+  }
+}
 
 const getCanvasPointerPos = (e: PointerEvent): { x: number; y: number } => {
   if (!patternCanvas.value) return { x: 0, y: 0 }
@@ -461,5 +615,37 @@ defineExpose({
   min-width: 40px;
   text-align: center;
   font-weight: 600;
+}
+
+/* === 边缘扩展手柄 === */
+.edge-handle {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  background: rgba(64, 158, 255, 0.85);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  z-index: 15;
+  cursor: pointer;
+  touch-action: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.edge-handle:hover {
+  transform: scale(1.3);
+  background: rgba(64, 158, 255, 1);
+}
+
+.edge-handle:active {
+  transform: scale(1.5);
+}
+
+.edge-drag-preview {
+  position: absolute;
+  background: rgba(64, 158, 255, 0.15);
+  border: 1px dashed rgba(64, 158, 255, 0.6);
+  pointer-events: none;
+  z-index: 9;
 }
 </style>

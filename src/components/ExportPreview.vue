@@ -8,7 +8,7 @@
             <span>图纸预览</span>
           </div>
         </template>
-        <div class="preview-canvas-wrapper">
+        <div ref="canvasWrapperRef" class="preview-canvas-wrapper">
           <canvas ref="previewCanvas" class="preview-canvas"></canvas>
         </div>
       </el-card>
@@ -113,7 +113,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import {
   Download,
@@ -140,6 +140,7 @@ const {
 } = storeToRefs(appStore)
 
 const previewCanvas = ref<HTMLCanvasElement | null>(null)
+const canvasWrapperRef = ref<HTMLElement | null>(null)
 
 const compressedData = computed(() => {
   if (!patternGrid.value.length) return ''
@@ -353,6 +354,22 @@ watch(
   },
   { deep: true, immediate: true }
 )
+
+let resizeObserver: ResizeObserver | null = null
+
+onMounted(() => {
+  if (canvasWrapperRef.value) {
+    resizeObserver = new ResizeObserver(() => {
+      generatePreview()
+    })
+    resizeObserver.observe(canvasWrapperRef.value)
+  }
+})
+
+onUnmounted(() => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
+})
 
 defineExpose({
   generatePreview,

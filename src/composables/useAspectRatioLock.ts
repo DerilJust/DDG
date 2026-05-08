@@ -1,7 +1,7 @@
 import { computed, ref, watch, type Ref, type ComputedRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '../store/appStore'
-import { gcd } from '../utils/patternUtils'
+import { ceilToMultipleOf5, gcd } from '../utils/patternUtils'
 
 export function useAspectRatioLock(fallbackImageSize?: Ref<{ width: number; height: number }>): {
   imageRatio: ComputedRef<string>
@@ -42,7 +42,7 @@ export function useAspectRatioLock(fallbackImageSize?: Ref<{ width: number; heig
     const aspectRatio = effectiveAspectRatio.value
     if (isNaN(aspectRatio)) return
     ratioLocking.value = true
-    appStore.setGridHeight(Math.max(1, Math.round(newWidth / aspectRatio)))
+    appStore.setGridHeight(ceilToMultipleOf5(Math.max(5, Math.round(newWidth / aspectRatio))))
     ratioLocking.value = false
   })
 
@@ -51,7 +51,7 @@ export function useAspectRatioLock(fallbackImageSize?: Ref<{ width: number; heig
     const aspectRatio = effectiveAspectRatio.value
     if (isNaN(aspectRatio)) return
     ratioLocking.value = true
-    appStore.setGridWidth(Math.max(1, Math.round(newHeight * aspectRatio)))
+    appStore.setGridWidth(ceilToMultipleOf5(Math.max(5, Math.round(newHeight * aspectRatio))))
     ratioLocking.value = false
   })
 

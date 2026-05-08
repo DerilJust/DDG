@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import colorSystemMapping from '../colorMap/colorSystemMapping.json'
 import {
+  ceilToMultipleOf5,
   gcd,
   setGridSizeByImageRatio,
   findClosestColor,
@@ -114,6 +115,39 @@ export const useAppStore = defineStore('app', {
         this.gridHeight = result.height
       }
     },
+    expandGrid(direction: 'top' | 'bottom' | 'left' | 'right', amount: number) {
+      if (amount < 1) return
+      this.pushHistory()
+      const blank = {
+        color: { r: 255, g: 255, b: 255, hex: '#FFFFFF', info: {} },
+        code: ''
+      }
+
+      if (direction === 'top') {
+        const newRows = createBlankGrid(this.gridWidth, amount)
+        this.patternGrid = [...newRows, ...this.patternGrid]
+        this.gridHeight += amount
+      } else if (direction === 'bottom') {
+        const newRows = createBlankGrid(this.gridWidth, amount)
+        this.patternGrid = [...this.patternGrid, ...newRows]
+        this.gridHeight += amount
+      } else if (direction === 'left') {
+        this.patternGrid = this.patternGrid.map((row) => [
+          ...Array.from({ length: amount }, () => ({ ...blank })),
+          ...row
+        ])
+        this.gridWidth += amount
+      } else if (direction === 'right') {
+        this.patternGrid = this.patternGrid.map((row) => [
+          ...row,
+          ...Array.from({ length: amount }, () => ({ ...blank }))
+        ])
+        this.gridWidth += amount
+      }
+
+      this.refreshColorStats()
+    },
+
     loadColorData() {
       try {
         const colors = Object.entries(colorSystemMapping).map(([hex, info]) => {
@@ -239,6 +273,8 @@ export const useAppStore = defineStore('app', {
       const previous = this.undoStack.pop()
       if (previous) {
         this.patternGrid = previous
+        this.gridWidth = previous[0]?.length || this.gridWidth
+        this.gridHeight = previous.length
         this.refreshColorStats()
       }
     },
@@ -248,6 +284,8 @@ export const useAppStore = defineStore('app', {
       const next = this.redoStack.pop()
       if (next) {
         this.patternGrid = next
+        this.gridWidth = next[0]?.length || this.gridWidth
+        this.gridHeight = next.length
         this.refreshColorStats()
       }
     },
@@ -264,6 +302,9 @@ export const useAppStore = defineStore('app', {
         alert('颜色数据未加载完成，请稍后重试')
         return
       }
+
+      this.gridWidth = ceilToMultipleOf5(Math.max(5, this.gridWidth))
+      this.gridHeight = ceilToMultipleOf5(Math.max(5, this.gridHeight))
 
       const img = new Image()
       const loadPromise = new Promise<void>((resolve, reject) => {
