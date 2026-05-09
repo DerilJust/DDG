@@ -15,9 +15,9 @@
                 <div class="slider-row">
                   <el-input-number
                     v-model="gridWidth"
-                    :min="1"
+                    :min="5"
                     :max="1000"
-                    :step="1"
+                    :step="5"
                     :controls="true"
                     size="small"
                     class="custom-input-number"
@@ -30,9 +30,9 @@
                 <div class="slider-row">
                   <el-input-number
                     v-model="gridHeight"
-                    :min="1"
+                    :min="5"
                     :max="1000"
-                    :step="1"
+                    :step="5"
                     :controls="true"
                     size="small"
                     class="custom-input-number"
@@ -162,10 +162,13 @@
           :step="10"
           show-input
           class="zoom-slider"
-          @input="drawImage"
         >
           <template #prefix>缩放: </template>
         </el-slider>
+
+        <div v-if="localImageData && cropRect.visible" class="crop-info">
+          <span>裁剪尺寸：{{ cropSizeInfo }}</span>
+        </div>
       </div>
     </div>
 
@@ -190,6 +193,7 @@ import { useAppStore } from '../store/appStore'
 import { useAspectRatioLock } from '../composables/useAspectRatioLock'
 import { UploadFilled, PictureFilled } from '@element-plus/icons-vue'
 import type { CropperImageData, CroppedResult, UploadedCropResult } from '../types'
+import { ceilToMultipleOf5 } from '../utils/patternUtils'
 
 const props = defineProps<{ visible: boolean }>()
 const emit = defineEmits<{
@@ -208,7 +212,9 @@ const dialogVisible = computed<boolean>({
 
 const localImageNaturalSize = ref<{ width: number; height: number }>({ width: 0, height: 0 })
 
-const { imageRatio } = useAspectRatioLock(localImageNaturalSize)
+const { imageRatio, guardedSetGridWidth, guardedSetGridHeight } = useAspectRatioLock(
+  localImageNaturalSize
+)
 
 const cropperCanvas = ref<HTMLCanvasElement | null>(null)
 const canvasContext = ref<CanvasRenderingContext2D | null>(null)
@@ -217,6 +223,15 @@ const zoomLevel = ref<number>(100)
 const selectedFile = ref<File | null>(null)
 const isProcessing = ref<boolean>(false)
 const activePreset = ref<string | null>(null)
+
+const cropSizeInfo = computed(() => {
+  if (!localImageData.value || !cropRect.value.visible) return ''
+  const img = localImageData.value
+  const crop = cropRect.value
+  const origW = Math.round(crop.width / img.displayScaleX)
+  const origH = Math.round(crop.height / img.displayScaleY)
+  return `${crop.width} x ${crop.height} px（原图 ${origW} x ${origH} px）`
+})
 
 const cropRect = ref<{
   x: number
@@ -267,14 +282,22 @@ watch(
   }
 )
 
+watch(zoomLevel, () => {
+  if (localImageData.value && cropRect.value.visible) {
+    drawImage()
+  }
+})
+
 const handleFileChange = (file: { raw: File }) => {
   selectedFile.value = file.raw
   const reader = new FileReader()
   reader.onload = (e: ProgressEvent<FileReader>) => {
+    if (selectedFile.value !== file.raw) return
     if (e.target?.result && typeof e.target.result === 'string') {
       const img = new Image()
       const imageUrl = e.target.result
       img.onload = () => {
+        if (selectedFile.value !== file.raw) return
         localImageNaturalSize.value = { width: img.width, height: img.height }
         localImageData.value = {
           offsetX: 0,
@@ -288,15 +311,17 @@ const handleFileChange = (file: { raw: File }) => {
         if (lockAspectRatio.value && img.width && img.height) {
           const ratio = img.width / img.height
           if (ratio >= 1) {
-            appStore.setGridHeight(Math.max(1, Math.round(gridWidth.value / ratio)))
+            guardedSetGridHeight(ceilToMultipleOf5(Math.max(5, Math.round(gridWidth.value / ratio))))
           } else {
-            appStore.setGridWidth(Math.max(1, Math.round(gridHeight.value * ratio)))
+            guardedSetGridWidth(ceilToMultipleOf5(Math.max(5, Math.round(gridHeight.value * ratio))))
           }
         }
         nextTick(() => {
-          initCanvas()
-          drawImage()
-          initCropRect()
+          requestAnimationFrame(() => {
+            initCanvas()
+            drawImage()
+            initCropRect()
+          })
         })
       }
       img.src = imageUrl
@@ -309,6 +334,7 @@ const initCanvas = (): void => {
   if (!cropperCanvas.value) return
   const width = cropperCanvas.value.clientWidth
   const height = cropperCanvas.value.clientHeight
+  if (width === 0 || height === 0) return
   cropperCanvas.value.width = width
   cropperCanvas.value.height = height
   canvasContext.value = cropperCanvas.value.getContext('2d')
@@ -357,6 +383,8 @@ const drawImage = (): void => {
   localImageData.value.displayHeight = displayHeight
   localImageData.value.displayScaleX = displayWidth / imgWidth
   localImageData.value.displayScaleY = displayHeight / imgHeight
+
+  constrainCropRect()
 }
 
 const initCropRect = (): void => {
@@ -413,6 +441,7 @@ const initCropRect = (): void => {
       resizeDirection: ''
     }
   }
+  constrainCropRect()
 }
 
 const applyPresetRatio = (name: string, ratio: number): void => {
@@ -458,11 +487,13 @@ const applyPresetRatio = (name: string, ratio: number): void => {
     resizeDirection: ''
   }
 
+  constrainCropRect()
+
   const currentMax = Math.max(gridWidth.value, gridHeight.value)
   if (ratio >= 1) {
-    appStore.setGridHeight(Math.max(1, Math.round(currentMax / ratio)))
+    guardedSetGridHeight(ceilToMultipleOf5(Math.max(5, Math.round(currentMax / ratio))))
   } else {
-    appStore.setGridWidth(Math.max(1, Math.round(currentMax * ratio)))
+    guardedSetGridWidth(ceilToMultipleOf5(Math.max(5, Math.round(currentMax * ratio))))
   }
 }
 
@@ -634,12 +665,12 @@ const constrainCropRect = (): void => {
   const displayWidth = localImageData.value.displayWidth
   const displayHeight = localImageData.value.displayHeight
   const crop = cropRect.value
-  crop.x = Math.max(offsetX, Math.min(crop.x, offsetX + displayWidth - crop.width))
-  crop.y = Math.max(offsetY, Math.min(crop.y, offsetY + displayHeight - crop.height))
+  crop.x = Math.round(Math.max(offsetX, Math.min(crop.x, offsetX + displayWidth - crop.width)))
+  crop.y = Math.round(Math.max(offsetY, Math.min(crop.y, offsetY + displayHeight - crop.height)))
   const maxWidth = offsetX + displayWidth - crop.x
   const maxHeight = offsetY + displayHeight - crop.y
-  crop.width = Math.min(crop.width, maxWidth)
-  crop.height = Math.min(crop.height, maxHeight)
+  crop.width = Math.round(Math.min(crop.width, maxWidth))
+  crop.height = Math.round(Math.min(crop.height, maxHeight))
   crop.width = Math.max(20, crop.width)
   crop.height = Math.max(20, crop.height)
 }
@@ -820,7 +851,7 @@ const handleConfirm = async () => {
 .cropper-wrapper {
   position: relative;
   width: 100%;
-  height: 400px;
+  height: clamp(280px, 50vh, 520px);
   border: 1px solid #e4e7ed;
   border-radius: 8px;
   overflow: hidden;
@@ -950,6 +981,13 @@ const handleConfirm = async () => {
 
 .zoom-slider {
   width: 100%;
+}
+
+.crop-info {
+  text-align: center;
+  font-size: 12px;
+  color: #909399;
+  padding: 4px 0;
 }
 
 :deep(.el-form-item__label) {

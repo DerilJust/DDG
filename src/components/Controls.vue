@@ -16,9 +16,9 @@
             <div class="slider-row">
               <el-input-number
                 v-model="gridWidth"
-                :min="1"
+                :min="5"
                 :max="1000"
-                :step="1"
+                :step="5"
                 :controls="true"
                 size="small"
                 class="custom-input-number"
@@ -32,9 +32,9 @@
             <div class="slider-row">
               <el-input-number
                 v-model="gridHeight"
-                :min="1"
+                :min="5"
                 :max="1000"
-                :step="1"
+                :step="5"
                 :controls="true"
                 size="small"
                 class="custom-input-number"

@@ -164,6 +164,8 @@ export const buildColorStats = (patternGrid: PatternCell[][]): ColorStat[] => {
   })
 }
 
+export const ceilToMultipleOf5 = (n: number): number => Math.ceil(n / 5) * 5
+
 export const setGridSizeByImageRatio = (
   width: number,
   height: number,

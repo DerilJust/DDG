@@ -7,6 +7,15 @@
           class="aside"
           :class="{ collapsed: isCollapsed }"
         >
+          <div class="aside-header">
+            <el-button
+              :icon="isCollapsed ? Expand : Fold"
+              circle
+              size="small"
+              class="collapse-btn"
+              @click="toggleSidebar"
+            />
+          </div>
           <UploadSection />
           <Controls @generate="generatePattern" @download="downloadPattern" />
           <PatternInfo />
@@ -25,16 +34,6 @@
               </el-icon>
             </el-button>
             <el-tabs v-model="activeTab" class="main-tabs">
-              <el-tab-pane style="height: 100%" label="原图预览" name="original">
-                <template #label>
-                  <el-icon>
-                    <Picture />
-                  </el-icon>
-                  原图预览
-                </template>
-                <SourceImageCard />
-              </el-tab-pane>
-
               <el-tab-pane style="height: 100%" label="拼豆图纸" name="pattern">
                 <template #label>
                   <el-icon>
@@ -89,9 +88,9 @@ import Controls from '../components/Controls.vue'
 import PreviewSection from '../components/PreviewSection.vue'
 import EditPalette from '../components/EditPalette.vue'
 import PatternInfo from '../components/PatternInfo.vue'
-import SourceImageCard from '../components/SourceImageCard.vue'
+
 import ExportPreview from '../components/ExportPreview.vue'
-import { Expand, Picture, Grid, Download } from '@element-plus/icons-vue'
+import { Expand, Fold, Grid, Download } from '@element-plus/icons-vue'
 
 const appStore = useAppStore()
 const {
@@ -109,7 +108,7 @@ const brandPalette = computed(() => buildBrandPalette(perlerColors.value, select
 
 const previewSection = ref<InstanceType<typeof PreviewSection> | null>(null)
 const isCollapsed = ref(false)
-const activeTab = ref('original')
+const activeTab = ref('pattern')
 
 onMounted(() => {
   appStore.loadColorData()
@@ -177,9 +176,31 @@ const onEditRedo = () => {
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 0;
   height: 100%;
   box-sizing: border-box;
+}
+
+.aside.collapsed {
+  padding: 0;
+  overflow: hidden;
+  border-right: none;
+  box-shadow: none;
+}
+
+.aside-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 12px 4px;
+  flex-shrink: 0;
+}
+
+.collapse-btn {
+  transition: transform 0.3s ease;
+}
+
+.collapse-btn:hover {
+  transform: scale(1.1);
 }
 
 .main-wrapper {
@@ -215,6 +236,11 @@ const onEditRedo = () => {
   left: 12px;
   z-index: 10;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease;
+}
+
+.sidebar-toggle-fab:hover {
+  transform: scale(1.1);
 }
 
 .editor-footer {
