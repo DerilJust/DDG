@@ -13,7 +13,10 @@
 - 编号显示：在格子内显示颜色编号，方便对照制作
 - 导出下载：导出带统计信息的完整图纸 PNG，支持 RLE 压缩字符串导入/导出
 - 视图操作：图纸预览支持缩放、平移，方便查看细节
-- 多页面路由：首页、编辑器、专注串珠页面（开发中）
+- 专注模式：高亮特定颜色，仅显示对应编号
+- 边缘扩展：编辑模式下拖拽四边手柄即可扩展图纸
+- 多页面路由：首页、编辑器、专注串珠页面
+- 可收起侧边栏：编辑器和专注页面均支持收起侧边栏
 - CI/CD：GitHub Actions 自动检查代码质量和构建
 
 ## 技术栈
@@ -86,20 +89,21 @@
 ├── src/
 │   ├── components/
 │   │   ├── UploadSection.vue      # 图片上传入口
-│   │   ├── UploadDialog.vue       # 图片裁剪弹窗（含预设比例）
+│   │   ├── UploadDialog.vue       # 图片裁剪弹窗（含预设比例、缩放滑块）
 │   │   ├── Controls.vue           # 参数设置（网格、颜色数、品牌）
-│   │   ├── PreviewSection.vue     # 拼豆图纸预览（Canvas + 缩放平移）
-│   │   ├── CanvasViewer.vue       # 原图 Canvas 查看器
-│   │   ├── EditPalette.vue        # 颜色编辑面板（画笔/填充/橡皮/吸管）
-│   │   ├── PatternInfo.vue        # 颜色数量统计
-│   │   ├── ExportPreview.vue      # 导出预览 + 下载 + 压缩字符串
-│   │   └── SourceImageCard.vue    # 原图预览卡片
+│   │   ├── PreviewSection.vue     # 拼豆图纸预览（Canvas 渲染、缩放平移、边缘扩展）
+│   │   ├── EditPalette.vue        # 底部编辑面板（画笔/填充/橡皮/吸管/手型）
+│   │   ├── PatternInfo.vue        # 侧边栏颜色数量统计
+│   │   ├── ExportPreview.vue      # 导出预览 + 下载 PNG + 压缩字符串复制
+│   │   ├── PatternViewer.vue      # 专注模式图纸查看器（支持高亮）
+│   │   ├── ColorHighlightList.vue # 专注模式颜色高亮列表
+│   │   └── ImportSection.vue      # 专注模式压缩数据导入
 │   ├── composables/
 │   │   └── useAspectRatioLock.ts  # 宽高比锁定逻辑
 │   ├── pages/
 │   │   ├── HomePage.vue           # 首页（Hero + 功能卡片 + GitHub 链接）
 │   │   ├── EditorPage.vue         # 编辑器主页面
-│   │   └── FocusBeadPage.vue      # 专注串珠页面（开发中）
+│   │   └── FocusBeadPage.vue      # 专注串珠页面（导入 + 颜色高亮 + 可收起侧栏）
 │   ├── router/
 │   │   └── index.ts               # Vue Router（Hash 模式）
 │   ├── store/
@@ -146,6 +150,13 @@
 - Firefox 55+
 - Safari 12+
 - Edge 79+
+
+## 待办事项
+
+- [ ] 国际化 (i18n)
+- [ ] 图纸库（保存/管理已生成的图纸）
+- [ ] 使用帮助页面
+- [ ] 编辑快捷键
 
 ## 许可证
 
