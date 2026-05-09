@@ -1,7 +1,20 @@
 <template>
   <div class="focus-page">
     <el-container class="root-container">
-      <el-aside width="300px" class="aside">
+      <el-aside
+        :width="isCollapsed ? '0px' : '300px'"
+        class="aside"
+        :class="{ collapsed: isCollapsed }"
+      >
+        <div class="aside-header">
+          <el-button
+            :icon="isCollapsed ? Expand : Fold"
+            circle
+            size="small"
+            class="collapse-btn"
+            @click="toggleSidebar"
+          />
+        </div>
         <ImportSection ref="importSectionRef" @import="handleImport" />
         <ColorHighlightList
           v-if="colorStats.length > 0"
@@ -12,6 +25,15 @@
       </el-aside>
 
       <el-main class="main">
+        <el-button
+          v-if="isCollapsed"
+          class="sidebar-toggle-fab"
+          circle
+          size="small"
+          @click="toggleSidebar"
+        >
+          <el-icon :size="18"><Expand /></el-icon>
+        </el-button>
         <div v-if="patternGrid.length && gridWidth > 0" class="viewer-wrapper">
           <PatternViewer :highlighted-color-keys="highlightedKeys" />
         </div>
@@ -35,7 +57,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { Edit } from '@element-plus/icons-vue'
+import { Edit, Expand, Fold } from '@element-plus/icons-vue'
 import { useAppStore } from '../store/appStore'
 import ImportSection from '../components/ImportSection.vue'
 import ColorHighlightList from '../components/ColorHighlightList.vue'
@@ -46,6 +68,11 @@ const { patternGrid, gridWidth, colorStats, perlerColors } = storeToRefs(appStor
 
 const importSectionRef = ref<InstanceType<typeof ImportSection> | null>(null)
 const highlightedKeys = reactive(new Set<string>())
+const isCollapsed = ref(false)
+
+function toggleSidebar() {
+  isCollapsed.value = !isCollapsed.value
+}
 
 function toggleHighlight(key: string) {
   if (highlightedKeys.has(key)) {
@@ -96,6 +123,7 @@ onMounted(() => {
   border-right: 1px solid #e4e7ed;
   background: #fafafa;
   overflow-y: auto;
+  transition: all 0.3s ease;
 }
 
 .main {
@@ -105,6 +133,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 .viewer-wrapper {
@@ -119,5 +148,39 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #f6f8fa 0%, #e9ecef 100%);
+}
+
+.aside-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 12px 4px;
+}
+
+.collapse-btn {
+  z-index: 5;
+  transition: transform 0.3s ease;
+}
+
+.collapse-btn:hover {
+  transform: scale(1.1);
+}
+
+.aside.collapsed {
+  padding: 0;
+  overflow: hidden;
+  border-right: none;
+}
+
+.sidebar-toggle-fab {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease;
+}
+
+.sidebar-toggle-fab:hover {
+  transform: scale(1.1);
 }
 </style>

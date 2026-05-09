@@ -21,7 +21,7 @@
           @pointerleave="handleCanvasPointerUp"
         />
 
-        <div v-if="selectionStart" class="selection-overlay" :style="selectionOverlayStyle" />
+        <div v-if="showSelectionOverlay" class="selection-overlay" :style="selectionOverlayStyle" />
 
         <div class="floating-controls">
           <el-button size="small" circle title="缩小" @click="zoomOut"> - </el-button>
@@ -88,7 +88,8 @@ interface Point {
 }
 
 const appStore = useAppStore()
-const { gridWidth, gridHeight, patternGrid, editMode, showNumbers } = storeToRefs(appStore)
+const { gridWidth, gridHeight, patternGrid, editMode, showNumbers, selectedTool } =
+  storeToRefs(appStore)
 
 const viewScale = ref<number>(1)
 const viewOffsetX = ref<number>(0)
@@ -182,6 +183,14 @@ const fitToContainer = (): void => {
   viewOffsetY.value = (ch - ph * viewScale.value) / 2
 }
 
+const showSelectionOverlay = computed(() => {
+  if (!selectionStart.value || !selectionEnd.value) return false
+  return (
+    selectionStart.value.x !== selectionEnd.value.x ||
+    selectionStart.value.y !== selectionEnd.value.y
+  )
+})
+
 const selectionOverlayStyle = computed<Record<string, string>>(() => {
   if (!selectionStart.value)
     return { display: 'none', left: '0', top: '0', width: '0', height: '0' }
@@ -216,21 +225,22 @@ const gridPixelBottom = computed(
 )
 
 const HANDLE_SIZE = 28
+const HANDLE_OFFSET = HANDLE_SIZE + 6
 
 const edgeTopStyle = computed(() => ({
   left: `${(gridPixelLeft.value + gridPixelRight.value) / 2 - HANDLE_SIZE / 2}px`,
-  top: `${gridPixelTop.value - HANDLE_SIZE / 2}px`
+  top: `${gridPixelTop.value - HANDLE_OFFSET}px`
 }))
 const edgeBottomStyle = computed(() => ({
   left: `${(gridPixelLeft.value + gridPixelRight.value) / 2 - HANDLE_SIZE / 2}px`,
-  top: `${gridPixelBottom.value - HANDLE_SIZE / 2}px`
+  top: `${gridPixelBottom.value + HANDLE_OFFSET - HANDLE_SIZE}px`
 }))
 const edgeLeftStyle = computed(() => ({
-  left: `${gridPixelLeft.value - HANDLE_SIZE / 2}px`,
+  left: `${gridPixelLeft.value - HANDLE_OFFSET}px`,
   top: `${(gridPixelTop.value + gridPixelBottom.value) / 2 - HANDLE_SIZE / 2}px`
 }))
 const edgeRightStyle = computed(() => ({
-  left: `${gridPixelRight.value - HANDLE_SIZE / 2}px`,
+  left: `${gridPixelRight.value + HANDLE_OFFSET - HANDLE_SIZE}px`,
   top: `${(gridPixelTop.value + gridPixelBottom.value) / 2 - HANDLE_SIZE / 2}px`
 }))
 
@@ -378,6 +388,17 @@ const handleMouseUp = (): void => {
 const handleCanvasPointerDown = (e: PointerEvent) => {
   if (!editMode.value || !patternCanvas.value) return
   e.preventDefault()
+
+  if (selectedTool.value === 'pan') {
+    isDragging.value = true
+    dragStartX.value = e.clientX - viewOffsetX.value
+    dragStartY.value = e.clientY - viewOffsetY.value
+    if (patternCanvas.value.setPointerCapture) {
+      patternCanvas.value.setPointerCapture(e.pointerId)
+    }
+    return
+  }
+
   const cell = getGridCell(e)
   if (!cell || !cell.inGrid) return
   pointerDown.value = true
@@ -389,7 +410,16 @@ const handleCanvasPointerDown = (e: PointerEvent) => {
 }
 
 const handleCanvasPointerMove = (e: PointerEvent) => {
-  if (!editMode.value || !pointerDown.value) return
+  if (!editMode.value) return
+
+  if (selectedTool.value === 'pan' && isDragging.value) {
+    viewOffsetX.value = e.clientX - dragStartX.value
+    viewOffsetY.value = e.clientY - dragStartY.value
+    scheduleRedraw()
+    return
+  }
+
+  if (!pointerDown.value) return
   e.preventDefault()
   const cell = getGridCell(e)
   if (!cell) return
@@ -400,7 +430,17 @@ const handleCanvasPointerMove = (e: PointerEvent) => {
 }
 
 const handleCanvasPointerUp = (e: PointerEvent) => {
-  if (!editMode.value || !selectionStart.value) return
+  if (!editMode.value) return
+
+  if (selectedTool.value === 'pan') {
+    isDragging.value = false
+    if (patternCanvas.value && e?.pointerId != null && patternCanvas.value.releasePointerCapture) {
+      patternCanvas.value.releasePointerCapture(e.pointerId)
+    }
+    return
+  }
+
+  if (!selectionStart.value) return
   pointerDown.value = false
   if (patternCanvas.value && e?.pointerId != null && patternCanvas.value.releasePointerCapture) {
     patternCanvas.value.releasePointerCapture(e.pointerId)
@@ -488,7 +528,6 @@ watch(
   patternGrid,
   () => {
     scheduleRedraw()
-    nextTick(() => fitToContainer())
   },
   { deep: true, immediate: true }
 )
@@ -497,8 +536,8 @@ watch([gridWidth, gridHeight, cellSize, axisMargin], () => {
   if (!patternGrid.value.length) {
     initCanvasSize()
     scheduleRedraw()
-    nextTick(() => fitToContainer())
   }
+  nextTick(() => fitToContainer())
 })
 
 let resizeObserver: ResizeObserver | null = null

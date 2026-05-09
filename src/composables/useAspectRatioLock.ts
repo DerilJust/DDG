@@ -1,25 +1,17 @@
 import { computed, ref, watch, type Ref, type ComputedRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '../store/appStore'
-import { ceilToMultipleOf5, gcd } from '../utils/patternUtils'
+import { gcd } from '../utils/patternUtils'
 
 export function useAspectRatioLock(fallbackImageSize?: Ref<{ width: number; height: number }>): {
   imageRatio: ComputedRef<string>
+  guardedSetGridWidth: (w: number) => void
+  guardedSetGridHeight: (h: number) => void
 } {
   const appStore = useAppStore()
   const { gridWidth, gridHeight, lockAspectRatio, originalImageSize } = storeToRefs(appStore)
 
   const ratioLocking = ref(false)
-
-  const effectiveAspectRatio = computed(() => {
-    if (fallbackImageSize?.value?.width && fallbackImageSize.value.width > 0) {
-      return fallbackImageSize.value.width / fallbackImageSize.value.height
-    }
-    if (originalImageSize.value.width > 0) {
-      return originalImageSize.value.width / originalImageSize.value.height
-    }
-    return 1
-  })
 
   const imageRatio = computed<string>(() => {
     const storeSize = originalImageSize.value
@@ -37,23 +29,31 @@ export function useAspectRatioLock(fallbackImageSize?: Ref<{ width: number; heig
     return '暂无图片'
   })
 
-  watch(gridWidth, (newWidth) => {
-    if (!lockAspectRatio.value || ratioLocking.value) return
-    const aspectRatio = effectiveAspectRatio.value
-    if (isNaN(aspectRatio)) return
-    ratioLocking.value = true
-    appStore.setGridHeight(ceilToMultipleOf5(Math.max(5, Math.round(newWidth / aspectRatio))))
-    ratioLocking.value = false
-  })
+  watch(gridWidth, (_newWidth) => {
+    if (ratioLocking.value) return
+    if (lockAspectRatio.value) {
+      appStore.setLockAspectRatio(false)
+    }
+  }, { flush: 'sync' })
 
-  watch(gridHeight, (newHeight) => {
-    if (!lockAspectRatio.value || ratioLocking.value) return
-    const aspectRatio = effectiveAspectRatio.value
-    if (isNaN(aspectRatio)) return
-    ratioLocking.value = true
-    appStore.setGridWidth(ceilToMultipleOf5(Math.max(5, Math.round(newHeight * aspectRatio))))
-    ratioLocking.value = false
-  })
+  watch(gridHeight, (_newHeight) => {
+    if (ratioLocking.value) return
+    if (lockAspectRatio.value) {
+      appStore.setLockAspectRatio(false)
+    }
+  }, { flush: 'sync' })
 
-  return { imageRatio }
+  function guardedSetGridWidth(w: number) {
+    ratioLocking.value = true
+    appStore.setGridWidth(w)
+    ratioLocking.value = false
+  }
+
+  function guardedSetGridHeight(h: number) {
+    ratioLocking.value = true
+    appStore.setGridHeight(h)
+    ratioLocking.value = false
+  }
+
+  return { imageRatio, guardedSetGridWidth, guardedSetGridHeight }
 }

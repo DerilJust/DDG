@@ -212,7 +212,9 @@ const dialogVisible = computed<boolean>({
 
 const localImageNaturalSize = ref<{ width: number; height: number }>({ width: 0, height: 0 })
 
-const { imageRatio } = useAspectRatioLock(localImageNaturalSize)
+const { imageRatio, guardedSetGridWidth, guardedSetGridHeight } = useAspectRatioLock(
+  localImageNaturalSize
+)
 
 const cropperCanvas = ref<HTMLCanvasElement | null>(null)
 const canvasContext = ref<CanvasRenderingContext2D | null>(null)
@@ -309,9 +311,9 @@ const handleFileChange = (file: { raw: File }) => {
         if (lockAspectRatio.value && img.width && img.height) {
           const ratio = img.width / img.height
           if (ratio >= 1) {
-            appStore.setGridHeight(ceilToMultipleOf5(Math.max(5, Math.round(gridWidth.value / ratio))))
+            guardedSetGridHeight(ceilToMultipleOf5(Math.max(5, Math.round(gridWidth.value / ratio))))
           } else {
-            appStore.setGridWidth(ceilToMultipleOf5(Math.max(5, Math.round(gridHeight.value * ratio))))
+            guardedSetGridWidth(ceilToMultipleOf5(Math.max(5, Math.round(gridHeight.value * ratio))))
           }
         }
         nextTick(() => {
@@ -489,9 +491,9 @@ const applyPresetRatio = (name: string, ratio: number): void => {
 
   const currentMax = Math.max(gridWidth.value, gridHeight.value)
   if (ratio >= 1) {
-    appStore.setGridHeight(ceilToMultipleOf5(Math.max(5, Math.round(currentMax / ratio))))
+    guardedSetGridHeight(ceilToMultipleOf5(Math.max(5, Math.round(currentMax / ratio))))
   } else {
-    appStore.setGridWidth(ceilToMultipleOf5(Math.max(5, Math.round(currentMax * ratio))))
+    guardedSetGridWidth(ceilToMultipleOf5(Math.max(5, Math.round(currentMax * ratio))))
   }
 }
 

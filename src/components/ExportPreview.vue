@@ -348,7 +348,7 @@ const copyCompressedData = async (): Promise<void> => {
 }
 
 watch(
-  [patternGrid, showNumbers, selectedBrand, colorStats],
+  [patternGrid, showNumbers, selectedBrand, colorStats, gridWidth, gridHeight],
   () => {
     generatePreview()
   },

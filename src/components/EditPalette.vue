@@ -45,10 +45,10 @@
 
       <span class="tool-sep"></span>
 
-      <el-button size="small" :icon="RefreshLeft" @click="undo" :disabled="!canUndo"
+      <el-button size="small" :icon="RefreshLeft" :disabled="!canUndo" @click="undo"
         >撤销</el-button
       >
-      <el-button size="small" :icon="RefreshRight" @click="redo" :disabled="!canRedo"
+      <el-button size="small" :icon="RefreshRight" :disabled="!canRedo" @click="redo"
         >重做</el-button
       >
     </div>
@@ -68,8 +68,8 @@
                 :key="item.code"
                 class="palette-chip"
                 :class="{ active: item.color.hex === activeColorHex }"
-                @click="selectColor(item.color)"
                 :title="`${item.code} (${item.count}颗)`"
+                @click="selectColor(item.color)"
               >
                 <div class="chip-swatch" :style="{ backgroundColor: item.color.hex }"></div>
                 <span class="chip-code">{{ item.code }}</span>
@@ -91,8 +91,8 @@
                     :key="item.code"
                     class="palette-chip"
                     :class="{ active: item.color.hex === activeColorHex }"
-                    @click="selectColor(item.color)"
                     :title="item.code"
+                    @click="selectColor(item.color)"
                   >
                     <div class="chip-swatch" :style="{ backgroundColor: item.color.hex }"></div>
                     <span class="chip-code">{{ item.code }}</span>
@@ -108,8 +108,8 @@
         type="primary"
         size="small"
         class="fill-all-btn"
-        @click="fillAll"
         :disabled="!activeColorHex"
+        @click="fillAll"
         >全部填充</el-button
       >
     </div>
