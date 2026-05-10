@@ -65,14 +65,13 @@ const { infoText, colorStats } = storeToRefs(appStore)
 
 <style scoped>
 .pattern-info {
-  margin-bottom: 24px;
-  padding: 16px;
+  padding: 10px;
 }
 
 .section-title {
   font-size: 18px;
   font-weight: bold;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   color: #303133;
   display: flex;
   align-items: center;

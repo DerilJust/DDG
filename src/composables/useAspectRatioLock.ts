@@ -29,19 +29,43 @@ export function useAspectRatioLock(fallbackImageSize?: Ref<{ width: number; heig
     return '暂无图片'
   })
 
-  watch(gridWidth, (_newWidth) => {
-    if (ratioLocking.value) return
-    if (lockAspectRatio.value) {
-      appStore.setLockAspectRatio(false)
+  function getEffectiveImageSize(): { width: number; height: number } {
+    const storeSize = originalImageSize.value
+    if (storeSize.width && storeSize.height) return storeSize
+    if (fallbackImageSize) {
+      const fallback = fallbackImageSize.value
+      if (fallback.width && fallback.height) return fallback
     }
-  }, { flush: 'sync' })
+    return { width: 0, height: 0 }
+  }
 
-  watch(gridHeight, (_newHeight) => {
-    if (ratioLocking.value) return
-    if (lockAspectRatio.value) {
-      appStore.setLockAspectRatio(false)
-    }
-  }, { flush: 'sync' })
+  watch(
+    gridWidth,
+    (newWidth) => {
+      if (ratioLocking.value) return
+      if (lockAspectRatio.value) {
+        const size = getEffectiveImageSize()
+        if (!size.width || !size.height) return
+        const ratio = size.width / size.height
+        guardedSetGridHeight(Math.max(5, Math.round(newWidth / ratio)))
+      }
+    },
+    { flush: 'sync' }
+  )
+
+  watch(
+    gridHeight,
+    (newHeight) => {
+      if (ratioLocking.value) return
+      if (lockAspectRatio.value) {
+        const size = getEffectiveImageSize()
+        if (!size.width || !size.height) return
+        const ratio = size.width / size.height
+        guardedSetGridWidth(Math.max(5, Math.round(newHeight * ratio)))
+      }
+    },
+    { flush: 'sync' }
+  )
 
   function guardedSetGridWidth(w: number) {
     ratioLocking.value = true

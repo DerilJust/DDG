@@ -115,13 +115,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import {
-  Download,
-  CopyDocument,
-  PictureFilled,
-  DataAnalysis,
-  Files
-} from '@element-plus/icons-vue'
+import { Download, CopyDocument, PictureFilled, DataAnalysis, Files } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useAppStore } from '../store/appStore'
 import { compressPatternGrid } from '../utils/compressionUtils'
@@ -152,9 +146,7 @@ const compressedData = computed(() => {
   )
 })
 
-const totalBeads = computed(() =>
-  colorStats.value.reduce((sum, stat) => sum + stat.count, 0)
-)
+const totalBeads = computed(() => colorStats.value.reduce((sum, stat) => sum + stat.count, 0))
 
 const colorCount = computed(() => colorStats.value.length)
 
@@ -312,8 +304,7 @@ const downloadExport = (): void => {
   const columns = 3
   const rowHeight = 48
   const headerHeight = 120
-  const statsHeight =
-    Math.ceil(colorStats.value.length / columns) * rowHeight + headerHeight
+  const statsHeight = Math.ceil(colorStats.value.length / columns) * rowHeight + headerHeight
 
   const finalCanvas = document.createElement('canvas')
   const finalCtx = finalCanvas.getContext('2d')
@@ -324,7 +315,13 @@ const downloadExport = (): void => {
 
   finalCtx.drawImage(gridCanvas, 0, 0)
 
-  drawStatsPanel(finalCtx, finalCanvas.width, gridCanvasHeight, colorStats.value, selectedBrand.value)
+  drawStatsPanel(
+    finalCtx,
+    finalCanvas.width,
+    gridCanvasHeight,
+    colorStats.value,
+    selectedBrand.value
+  )
 
   const link = document.createElement('a')
   link.download = `perler-pattern-${Date.now()}.png`

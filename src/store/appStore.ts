@@ -41,6 +41,7 @@ export const useAppStore = defineStore('app', {
     selectedBrand: 'MARD',
     showNumbers: false,
     lockAspectRatio: true,
+    padToMultipleOf5: true,
     infoText: '请上传图片并生成图纸',
     perlerColors: [],
     patternGrid: createBlankGrid(30, 30),
@@ -89,6 +90,9 @@ export const useAppStore = defineStore('app', {
     },
     setLockAspectRatio(value: boolean) {
       this.lockAspectRatio = value
+    },
+    setPadToMultipleOf5(value: boolean) {
+      this.padToMultipleOf5 = value
     },
     setGridWidth(width: number) {
       this.gridWidth = width
@@ -303,8 +307,22 @@ export const useAppStore = defineStore('app', {
         return
       }
 
-      this.gridWidth = ceilToMultipleOf5(Math.max(5, this.gridWidth))
-      this.gridHeight = ceilToMultipleOf5(Math.max(5, this.gridHeight))
+      const originalWidth = Math.max(5, this.gridWidth)
+      const originalHeight = Math.max(5, this.gridHeight)
+
+      let effectiveWidth = originalWidth
+      let effectiveHeight = originalHeight
+      let leftPad = 0
+      let topPad = 0
+
+      if (this.padToMultipleOf5) {
+        effectiveWidth = ceilToMultipleOf5(originalWidth)
+        effectiveHeight = ceilToMultipleOf5(originalHeight)
+        const padW = effectiveWidth - originalWidth
+        const padH = effectiveHeight - originalHeight
+        leftPad = Math.floor(padW / 2)
+        topPad = Math.floor(padH / 2)
+      }
 
       const img = new Image()
       const loadPromise = new Promise<void>((resolve, reject) => {
@@ -317,33 +335,50 @@ export const useAppStore = defineStore('app', {
       const tempCanvas = document.createElement('canvas')
       const tempCtx = tempCanvas.getContext('2d')
       if (!tempCtx) return
-      tempCanvas.width = Math.max(1, this.gridWidth)
-      tempCanvas.height = Math.max(1, this.gridHeight)
-      tempCtx.drawImage(img, 0, 0, this.gridWidth, this.gridHeight)
+      tempCanvas.width = Math.max(1, effectiveWidth)
+      tempCanvas.height = Math.max(1, effectiveHeight)
+      tempCtx.drawImage(img, leftPad, topPad, originalWidth, originalHeight)
 
-      const imageData = tempCtx.getImageData(0, 0, this.gridWidth, this.gridHeight)
+      const imageData = tempCtx.getImageData(0, 0, effectiveWidth, effectiveHeight)
       const pixels = imageData.data
       const colorMap = quantizeColorsUtil(pixels, this.colorCount, this.perlerColors)
 
+      const blankCell = {
+        color: { r: 255, g: 255, b: 255, hex: '#FFFFFF', info: {} },
+        code: ''
+      }
+
       const nextGrid = [] as AppStoreState['patternGrid']
-      for (let y = 0; y < this.gridHeight; y++) {
+      for (let y = 0; y < effectiveHeight; y++) {
         const row = [] as AppStoreState['patternGrid'][number]
-        for (let x = 0; x < this.gridWidth; x++) {
-          const index = (y * this.gridWidth + x) * 4
-          const r = pixels[index]
-          const g = pixels[index + 1]
-          const b = pixels[index + 2]
-          const closestColor = findClosestColor({ r, g, b }, colorMap)
-          const colorCode = closestColor.info ? closestColor.info[this.selectedBrand] || '' : ''
-          row.push({ color: closestColor, code: colorCode })
+        for (let x = 0; x < effectiveWidth; x++) {
+          const inPadding =
+            this.padToMultipleOf5 &&
+            (x < leftPad ||
+              x >= leftPad + originalWidth ||
+              y < topPad ||
+              y >= topPad + originalHeight)
+          if (inPadding) {
+            row.push({ ...blankCell })
+          } else {
+            const index = (y * effectiveWidth + x) * 4
+            const r = pixels[index]
+            const g = pixels[index + 1]
+            const b = pixels[index + 2]
+            const closestColor = findClosestColor({ r, g, b }, colorMap)
+            const colorCode = closestColor.info ? closestColor.info[this.selectedBrand] || '' : ''
+            row.push({ color: closestColor, code: colorCode })
+          }
         }
         nextGrid.push(row)
       }
 
+      this.gridWidth = effectiveWidth
+      this.gridHeight = effectiveHeight
       this.patternGrid = nextGrid
       this.refreshColorStats()
       this.selectedEditColor = this.selectedEditColor || this.patternPalette[0]?.color || null
-      this.infoText = `拼豆图纸已生成: ${this.gridWidth}x${this.gridHeight} 网格, ${this.colorCount} 种颜色`
+      this.infoText = `拼豆图纸已生成: ${effectiveWidth}x${effectiveHeight} 网格, ${this.colorCount} 种颜色`
     },
 
     importFromCompressed(compressed: string): boolean {

@@ -115,11 +115,7 @@ describe('quantizeColorsUtil', () => {
   })
 
   it('少于count的颜色数返回所有不同颜色', () => {
-    const pixels = new Uint8ClampedArray([
-      255, 0, 0, 255,
-      0, 255, 0, 255,
-      255, 0, 0, 255
-    ])
+    const pixels = new Uint8ClampedArray([255, 0, 0, 255, 0, 255, 0, 255, 255, 0, 0, 255])
     const result = quantizeColorsUtil(pixels, 5, colors)
     expect(result.length).toBeLessThanOrEqual(3)
   })
@@ -129,15 +125,24 @@ describe('quantizeColorsUtil', () => {
     const pixels = new Uint8ClampedArray(pixelCount * 4)
     for (let i = 0; i < 50; i++) {
       const offset = i * 4
-      pixels[offset] = 255; pixels[offset + 1] = 0; pixels[offset + 2] = 0; pixels[offset + 3] = 255
+      pixels[offset] = 255
+      pixels[offset + 1] = 0
+      pixels[offset + 2] = 0
+      pixels[offset + 3] = 255
     }
     for (let i = 50; i < 80; i++) {
       const offset = i * 4
-      pixels[offset] = 0; pixels[offset + 1] = 255; pixels[offset + 2] = 0; pixels[offset + 3] = 255
+      pixels[offset] = 0
+      pixels[offset + 1] = 255
+      pixels[offset + 2] = 0
+      pixels[offset + 3] = 255
     }
     for (let i = 80; i < pixelCount; i++) {
       const offset = i * 4
-      pixels[offset] = 0; pixels[offset + 1] = 0; pixels[offset + 2] = 255; pixels[offset + 3] = 255
+      pixels[offset] = 0
+      pixels[offset + 1] = 0
+      pixels[offset + 2] = 255
+      pixels[offset + 3] = 255
     }
 
     const result = quantizeColorsUtil(pixels, 2, colors)
@@ -146,11 +151,7 @@ describe('quantizeColorsUtil', () => {
   })
 
   it('RGBA步长正确（跳过alpha通道）', () => {
-    const pixels = new Uint8ClampedArray([
-      255, 0, 0, 255,
-      255, 0, 0, 128,
-      0, 255, 0, 255
-    ])
+    const pixels = new Uint8ClampedArray([255, 0, 0, 255, 255, 0, 0, 128, 0, 255, 0, 255])
     const result = quantizeColorsUtil(pixels, 2, colors)
     expect(result).toHaveLength(2)
   })
@@ -265,10 +266,7 @@ describe('buildColorStats', () => {
   })
 
   it('按code字母序排序', () => {
-    const grid: PatternCell[][] = [
-      [makeCell(colors[0], 'R01')],
-      [makeCell(colors[1], 'G01')]
-    ]
+    const grid: PatternCell[][] = [[makeCell(colors[0], 'R01')], [makeCell(colors[1], 'G01')]]
     const result = buildColorStats(grid)
     expect(result[0].code.localeCompare(result[1].code)).toBeLessThan(0)
   })

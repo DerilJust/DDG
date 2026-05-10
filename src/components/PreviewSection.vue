@@ -63,11 +63,7 @@
             @pointerup="handleEdgeDragUp"
             @pointerleave="handleEdgeDragUp"
           />
-          <div
-            v-if="edgeDragPreview"
-            class="edge-drag-preview"
-            :style="edgeDragPreviewStyle"
-          />
+          <div v-if="edgeDragPreview" class="edge-drag-preview" :style="edgeDragPreviewStyle" />
         </template>
       </div>
     </div>
@@ -254,8 +250,7 @@ const edgeDrag = ref<{
 const edgeDragPreview = computed(() => edgeDrag.value !== null && edgeDrag.value.cells > 0)
 
 const edgeDragPreviewStyle = computed(() => {
-  if (!edgeDrag.value || edgeDrag.value.cells <= 0)
-    return { display: 'none' }
+  if (!edgeDrag.value || edgeDrag.value.cells <= 0) return { display: 'none' }
   const d = edgeDrag.value
   const cells = d.cells
   const cellPx = viewScale.value * cellSize.value

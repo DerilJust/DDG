@@ -7,16 +7,17 @@
           class="aside"
           :class="{ collapsed: isCollapsed }"
         >
-          <div class="aside-header">
-            <el-button
-              :icon="isCollapsed ? Expand : Fold"
-              circle
-              size="small"
-              class="collapse-btn"
-              @click="toggleSidebar"
-            />
-          </div>
-          <UploadSection />
+          <UploadSection>
+            <template #title-actions>
+              <el-button
+                :icon="isCollapsed ? Expand : Fold"
+                circle
+                size="small"
+                class="collapse-btn"
+                @click="toggleSidebar"
+              />
+            </template>
+          </UploadSection>
           <Controls @generate="generatePattern" @download="downloadPattern" />
           <PatternInfo />
         </el-aside>
@@ -188,14 +189,9 @@ const onEditRedo = () => {
   box-shadow: none;
 }
 
-.aside-header {
-  display: flex;
-  justify-content: flex-end;
-  padding: 10px 12px 4px;
-  flex-shrink: 0;
-}
-
 .collapse-btn {
+  margin-left: auto;
+  flex-shrink: 0;
   transition: transform 0.3s ease;
 }
 
@@ -214,6 +210,7 @@ const onEditRedo = () => {
 .main {
   background: white;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.08);
+  padding-top: 0px;
   display: flex;
   flex-direction: column;
   flex: 1;

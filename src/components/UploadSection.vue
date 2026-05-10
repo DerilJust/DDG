@@ -5,6 +5,7 @@
         <UploadFilled />
       </el-icon>
       图片上传
+      <slot name="title-actions"></slot>
     </h3>
     <el-card class="upload-card" shadow="hover">
       <div class="upload-content">
@@ -73,13 +74,13 @@ const handleUploadConfirm = (data: UploadedCropResult) => {
 
 <style scoped>
 .upload-section {
-  padding: 20px;
+  padding: 10px;
 }
 
 .section-title {
   font-size: 18px;
   font-weight: bold;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   color: #303133;
   display: flex;
   align-items: center;

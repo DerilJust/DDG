@@ -94,7 +94,6 @@ body {
 
 .header {
   background: #fff;
-  color: white;
   display: flex;
   align-items: center;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
@@ -118,7 +117,7 @@ h1.title {
   font-size: 32px;
   font-weight: bold;
   margin: 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-shadow: 1px 2px 4px rgba(0, 0, 0, 0.3);
   letter-spacing: 2px;
 }
 

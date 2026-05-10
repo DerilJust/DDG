@@ -18,7 +18,7 @@
                 v-model="gridWidth"
                 :min="5"
                 :max="1000"
-                :step="5"
+                :step="1"
                 :controls="true"
                 size="small"
                 class="custom-input-number"
@@ -34,7 +34,7 @@
                 v-model="gridHeight"
                 :min="5"
                 :max="1000"
-                :step="5"
+                :step="1"
                 :controls="true"
                 size="small"
                 class="custom-input-number"
@@ -93,6 +93,15 @@
               <span :class="['switch-label', lockAspectRatio ? 'active-text' : '']">开启</span>
             </div>
           </el-form-item>
+
+          <!-- 补充空白 -->
+          <el-form-item label="补充空白">
+            <div class="switch-wrapper">
+              <span :class="['switch-label', !padToMultipleOf5 ? 'active-text' : '']">关闭</span>
+              <el-switch v-model="padToMultipleOf5" />
+              <span :class="['switch-label', padToMultipleOf5 ? 'active-text' : '']">开启</span>
+            </div>
+          </el-form-item>
         </el-form>
       </div>
       <!-- 底部按钮 -->
@@ -122,8 +131,15 @@ import { MagicStick, Download, Setting } from '@element-plus/icons-vue'
 
 const emit = defineEmits(['download'])
 const appStore = useAppStore()
-const { gridWidth, gridHeight, colorCount, selectedBrand, showNumbers, lockAspectRatio } =
-  storeToRefs(appStore)
+const {
+  gridWidth,
+  gridHeight,
+  colorCount,
+  selectedBrand,
+  showNumbers,
+  lockAspectRatio,
+  padToMultipleOf5
+} = storeToRefs(appStore)
 
 const { imageRatio } = useAspectRatioLock()
 
@@ -139,8 +155,7 @@ const downloadPattern = (): void => {
 <style scoped>
 .controls-container {
   width: 100%;
-  margin-bottom: 24px;
-  padding: 16px;
+  padding: 10px;
 }
 
 .section-title {
@@ -150,7 +165,7 @@ const downloadPattern = (): void => {
   font-size: 18px;
   font-weight: bold;
   color: #303133;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .title-icon {

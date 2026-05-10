@@ -159,35 +159,22 @@ describe('calculateAxisLabelPositions', () => {
 
 describe('createPreviewOverlay', () => {
   it('创建rgba填充色', () => {
-    const overlay = createPreviewOverlay(
-      [{ x: 0, y: 0 }],
-      { r: 255, g: 0, b: 0 }
-    )
+    const overlay = createPreviewOverlay([{ x: 0, y: 0 }], { r: 255, g: 0, b: 0 })
     expect(overlay.fillColor).toBe('rgba(255, 0, 0, 0.45)')
   })
 
   it('默认描边色为#409EFF', () => {
-    const overlay = createPreviewOverlay(
-      [{ x: 0, y: 0 }],
-      { r: 0, g: 0, b: 0 }
-    )
+    const overlay = createPreviewOverlay([{ x: 0, y: 0 }], { r: 0, g: 0, b: 0 })
     expect(overlay.strokeColor).toBe('#409EFF')
   })
 
   it('自定义描边色', () => {
-    const overlay = createPreviewOverlay(
-      [{ x: 0, y: 0 }],
-      { r: 0, g: 0, b: 0 },
-      '#FF0000'
-    )
+    const overlay = createPreviewOverlay([{ x: 0, y: 0 }], { r: 0, g: 0, b: 0 }, '#FF0000')
     expect(overlay.strokeColor).toBe('#FF0000')
   })
 
   it('颜色值正确映射', () => {
-    const overlay = createPreviewOverlay(
-      [{ x: 1, y: 2 }],
-      { r: 100, g: 150, b: 200 }
-    )
+    const overlay = createPreviewOverlay([{ x: 1, y: 2 }], { r: 100, g: 150, b: 200 })
     expect(overlay.fillColor).toBe('rgba(100, 150, 200, 0.45)')
     expect(overlay.cells).toEqual([{ x: 1, y: 2 }])
   })

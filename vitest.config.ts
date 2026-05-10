@@ -12,8 +12,8 @@ export default mergeConfig(
         provider: 'v8',
         reporter: ['text', 'html', 'json-summary'],
         reportsDirectory: './coverage',
-        include: ['src/**/*.{ts,vue}'],
-      },
-    },
-  }),
+        include: ['src/**/*.{ts,vue}']
+      }
+    }
+  })
 )

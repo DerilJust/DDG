@@ -3,6 +3,7 @@
     <h3 class="section-title">
       <el-icon><Upload /></el-icon>
       导入图纸
+      <slot name="title-actions"></slot>
     </h3>
     <el-input
       v-model="inputText"
