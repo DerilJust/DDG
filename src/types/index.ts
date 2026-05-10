@@ -17,6 +17,7 @@ export interface AppStoreState {
   selectedBrand: string
   showNumbers: boolean
   lockAspectRatio: boolean
+  padToMultipleOf5: boolean
   infoText: string
   perlerColors: PerlerColor[]
   patternGrid: PatternCell[][]

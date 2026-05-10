@@ -6,16 +6,17 @@
         class="aside"
         :class="{ collapsed: isCollapsed }"
       >
-        <div class="aside-header">
-          <el-button
-            :icon="isCollapsed ? Expand : Fold"
-            circle
-            size="small"
-            class="collapse-btn"
-            @click="toggleSidebar"
-          />
-        </div>
-        <ImportSection ref="importSectionRef" @import="handleImport" />
+        <ImportSection ref="importSectionRef" @import="handleImport">
+          <template #title-actions>
+            <el-button
+              :icon="isCollapsed ? Expand : Fold"
+              circle
+              size="small"
+              class="collapse-btn"
+              @click="toggleSidebar"
+            />
+          </template>
+        </ImportSection>
         <ColorHighlightList
           v-if="colorStats.length > 0"
           :color-stats="colorStats"
@@ -119,7 +120,7 @@ onMounted(() => {
 .aside {
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: 10px;
   border-right: 1px solid #e4e7ed;
   background: #fafafa;
   overflow-y: auto;
@@ -150,25 +151,21 @@ onMounted(() => {
   background: linear-gradient(135deg, #f6f8fa 0%, #e9ecef 100%);
 }
 
-.aside-header {
-  display: flex;
-  justify-content: flex-end;
-  padding: 8px 12px 4px;
+.aside.collapsed {
+  padding: 0;
+  overflow: hidden;
+  border-right: none;
 }
 
 .collapse-btn {
+  margin-left: auto;
+  flex-shrink: 0;
   z-index: 5;
   transition: transform 0.3s ease;
 }
 
 .collapse-btn:hover {
   transform: scale(1.1);
-}
-
-.aside.collapsed {
-  padding: 0;
-  overflow: hidden;
-  border-right: none;
 }
 
 .sidebar-toggle-fab {
