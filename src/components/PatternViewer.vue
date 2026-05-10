@@ -11,11 +11,7 @@
         @mouseup="handleMouseUp"
         @mouseleave="handleMouseUp"
       >
-        <canvas
-          id="focus-pattern-canvas"
-          ref="patternCanvas"
-          class="pattern-canvas"
-        />
+        <canvas id="focus-pattern-canvas" ref="patternCanvas" class="pattern-canvas" />
 
         <div class="floating-controls">
           <el-button size="small" circle title="缩小" @click="zoomOut"> - </el-button>

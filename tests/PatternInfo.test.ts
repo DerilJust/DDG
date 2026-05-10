@@ -50,11 +50,14 @@ describe('PatternInfo', () => {
       }
       return origCreateElement(tag)
     })
-    vi.stubGlobal('Image', vi.fn(function (this: HTMLImageElement) {
-      const img = origCreateElement('img')
-      setTimeout(() => (img as unknown as { onload?: () => void }).onload?.(), 0)
-      return img
-    }))
+    vi.stubGlobal(
+      'Image',
+      vi.fn(function (this: HTMLImageElement) {
+        const img = origCreateElement('img')
+        setTimeout(() => (img as unknown as { onload?: () => void }).onload?.(), 0)
+        return img
+      })
+    )
 
     await store.generatePattern()
 

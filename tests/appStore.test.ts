@@ -352,10 +352,12 @@ describe('useAppStore', () => {
       store.pushHistory()
       const color = store.perlerColors[0]
       store.applyPatternGridChange(
-        store.patternGrid.map((row) => row.map(() => ({
-          color: { ...color },
-          code: 'A01'
-        })))
+        store.patternGrid.map((row) =>
+          row.map(() => ({
+            color: { ...color },
+            code: 'A01'
+          }))
+        )
       )
       store.undo()
       expect(store.patternGrid[0][0].code).toBe('')

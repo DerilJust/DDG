@@ -119,7 +119,13 @@ export function decompressPatternGrid(
         index = parseInt(run.substring(colonIdx + 1))
       }
 
-      if (isNaN(count) || count <= 0 || isNaN(index) || index < 0 || index >= paletteLookup.length) {
+      if (
+        isNaN(count) ||
+        count <= 0 ||
+        isNaN(index) ||
+        index < 0 ||
+        index >= paletteLookup.length
+      ) {
         return null
       }
 

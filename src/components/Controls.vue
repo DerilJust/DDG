@@ -131,8 +131,15 @@ import { MagicStick, Download, Setting } from '@element-plus/icons-vue'
 
 const emit = defineEmits(['download'])
 const appStore = useAppStore()
-const { gridWidth, gridHeight, colorCount, selectedBrand, showNumbers, lockAspectRatio, padToMultipleOf5 } =
-  storeToRefs(appStore)
+const {
+  gridWidth,
+  gridHeight,
+  colorCount,
+  selectedBrand,
+  showNumbers,
+  lockAspectRatio,
+  padToMultipleOf5
+} = storeToRefs(appStore)
 
 const { imageRatio } = useAspectRatioLock()
 

@@ -178,9 +178,7 @@ export function drawPatternToCanvas(
       const { cellX, cellY } = calculateCellPosition(x, y, cellSize, axisMargin, gridLineInterval)
 
       const highlightActive = opts.highlightedColorKeys && opts.highlightedColorKeys.size > 0
-      const cellKey = highlightActive
-        ? `${cell.color.r},${cell.color.g},${cell.color.b}`
-        : ''
+      const cellKey = highlightActive ? `${cell.color.r},${cell.color.g},${cell.color.b}` : ''
       if (highlightActive) {
         ctx.globalAlpha = opts.highlightedColorKeys!.has(cellKey) ? 1.0 : 0.25
       }

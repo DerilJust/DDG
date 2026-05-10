@@ -6,8 +6,18 @@ import {
 } from '../src/utils/compressionUtils'
 import type { PatternCell, PerlerColor } from '../src/utils/patternUtils'
 
-const makeColor = (r: number, g: number, b: number, hex: string, info?: Record<string, string>): PerlerColor => ({
-  r, g, b, hex, info: info ?? {}
+const makeColor = (
+  r: number,
+  g: number,
+  b: number,
+  hex: string,
+  info?: Record<string, string>
+): PerlerColor => ({
+  r,
+  g,
+  b,
+  hex,
+  info: info ?? {}
 })
 
 const makeCell = (color: PerlerColor, code: string): PatternCell => ({ color, code })
@@ -26,16 +36,12 @@ describe('compressPatternGrid', () => {
   })
 
   it('两个连续同色格合并为一个run', () => {
-    const grid: PatternCell[][] = [
-      [makeCell(red, 'A01'), makeCell(red, 'A01')]
-    ]
+    const grid: PatternCell[][] = [[makeCell(red, 'A01'), makeCell(red, 'A01')]]
     expect(compressPatternGrid(grid, 2, 1, 'MARD')).toBe('MARD:2x1|A01|2:0')
   })
 
   it('两个不同色格不合并，count=1省略', () => {
-    const grid: PatternCell[][] = [
-      [makeCell(red, 'A01'), makeCell(green, 'A02')]
-    ]
+    const grid: PatternCell[][] = [[makeCell(red, 'A01'), makeCell(green, 'A02')]]
     expect(compressPatternGrid(grid, 2, 1, 'MARD')).toBe('MARD:2x1|A01,A02|0,1')
   })
 
@@ -63,9 +69,7 @@ describe('compressPatternGrid', () => {
 
   it('空行正确处理（白色用_）', () => {
     const white = makeColor(255, 255, 255, '#FFFFFF')
-    const grid: PatternCell[][] = [
-      [makeCell(white, ''), makeCell(white, '')]
-    ]
+    const grid: PatternCell[][] = [[makeCell(white, ''), makeCell(white, '')]]
     expect(compressPatternGrid(grid, 2, 1, 'MARD')).toBe('MARD:2x1|_|2:0')
   })
 })

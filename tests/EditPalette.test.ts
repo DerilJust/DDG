@@ -5,7 +5,11 @@ import ElementPlus from 'element-plus'
 import type { PerlerColor, PaletteItem } from '../src/utils/patternUtils'
 
 const makeColor = (r: number, g: number, b: number, hex: string): PerlerColor => ({
-  r, g, b, hex, info: { MARD: 'A01' }
+  r,
+  g,
+  b,
+  hex,
+  info: { MARD: 'A01' }
 })
 
 const makePaletteItem = (code: string, count: number): PaletteItem => ({
