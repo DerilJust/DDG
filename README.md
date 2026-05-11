@@ -1,5 +1,7 @@
 # 拼豆图纸生成器
 
+> 本项目在开发过程中使用 [Claude Code](https://github.com/anthropics/claude-code) 编程。
+
 一个功能强大的拼豆图纸生成工具，支持上传图片自动生成拼豆图纸，包含颜色编号、数量统计和在线编辑功能。
 
 ## 功能特点
@@ -17,7 +19,7 @@
 - 边缘扩展：编辑模式下拖拽四边手柄即可扩展图纸
 - 多页面路由：首页、编辑器、专注串珠页面
 - 可收起侧边栏：编辑器和专注页面均支持收起侧边栏
-- CI/CD：GitHub Actions 自动检查代码质量和构建
+- CI/CD：GitHub Actions 自动检查代码质量、测试、构建并部署
 
 ## 技术栈
 
@@ -85,13 +87,15 @@
 ```
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                 # GitHub Actions CI（lint + build）
+│       └── ci.yml                 # GitHub Actions CI/CD（lint + test + build + deploy）
 ├── src/
 │   ├── components/
 │   │   ├── UploadSection.vue      # 图片上传入口
-│   │   ├── UploadDialog.vue       # 图片裁剪弹窗（含预设比例、缩放滑块）
+│   │   ├── CropperDialog.vue      # 图片裁剪弹窗（含预设比例、缩放滑块）
+│   │   ├── UploadDialog.vue       # 上传确认弹窗
 │   │   ├── Controls.vue           # 参数设置（网格、颜色数、品牌）
-│   │   ├── PreviewSection.vue     # 拼豆图纸预览（Canvas 渲染、缩放平移、边缘扩展）
+│   │   ├── CanvasViewer.vue       # 通用 Canvas 查看器（渲染、缩放平移）
+│   │   ├── PreviewSection.vue     # 拼豆图纸预览（含边缘扩展）
 │   │   ├── EditPalette.vue        # 底部编辑面板（画笔/填充/橡皮/吸管/手型）
 │   │   ├── PatternInfo.vue        # 侧边栏颜色数量统计
 │   │   ├── ExportPreview.vue      # 导出预览 + 下载 PNG + 压缩字符串复制

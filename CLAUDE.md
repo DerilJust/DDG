@@ -63,14 +63,19 @@ src/
     compressionUtils.ts            # RLE string compression/decompression for pattern grid export
   components/
     UploadSection.vue              # Sidebar "图片上传" card -- opens UploadDialog
-    UploadDialog.vue               # Modal dialog: image upload, crop canvas with handles,
-                                   # zoom slider, grid/form settings, preset ratio buttons
+    CropperDialog.vue              # Modal dialog: image crop with handles, zoom slider,
+                                   # grid/form settings, preset ratio buttons
+    UploadDialog.vue               # Upload confirmation dialog
     Controls.vue                   # Sidebar "参数设置" form (grid size, color count, brand, etc.)
+    CanvasViewer.vue               # Reusable Canvas viewer (render, pan, zoom)
     PatternInfo.vue                # Sidebar color usage statistics table
     SourceImageCard.vue            # Tab: original image preview
-    PreviewSection.vue             # Tab: perler pattern canvas viewer (with pan/zoom)
+    PreviewSection.vue             # Tab: perler pattern canvas viewer (with edge extension)
     ExportPreview.vue              # Tab: export-ready preview + download + compressed string export
     EditPalette.vue                # Footer: color palette editor, tool selector, undo/redo
+    PatternViewer.vue              # Focus mode pattern viewer (with highlight)
+    ColorHighlightList.vue         # Focus mode color highlight list
+    ImportSection.vue              # Focus mode compressed data import
   colorMap/
     colorSystemMapping.json        # 292 HEX keys -> { MARD, COCO, 漫漫, 盼盼, 咪小窝 } brand codes
   assets/
