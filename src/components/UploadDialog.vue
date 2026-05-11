@@ -193,6 +193,7 @@ import { useAppStore } from '../store/appStore'
 import { useAspectRatioLock } from '../composables/useAspectRatioLock'
 import { UploadFilled, PictureFilled } from '@element-plus/icons-vue'
 import type { CropperImageData, CroppedResult, UploadedCropResult } from '../types'
+import { ElMessage } from 'element-plus'
 import { ceilToMultipleOf5 } from '../utils/patternUtils'
 
 const props = defineProps<{ visible: boolean }>()
@@ -749,7 +750,7 @@ const handleConfirm = async () => {
     })
   } catch (error) {
     console.error('生成图纸失败：', error)
-    alert('生成图纸失败，请重试')
+    ElMessage.error('生成图纸失败，请重试')
   } finally {
     isProcessing.value = false
   }

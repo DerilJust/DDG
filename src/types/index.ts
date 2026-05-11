@@ -7,6 +7,19 @@ export interface ImageSize {
 
 export type EditingTool = 'brush' | 'fill' | 'pan' | 'eraser' | 'eyedropper'
 
+export type ShortcutPresetName = 'default' | 'photoshop' | 'custom'
+
+export interface ShortcutConfig {
+  toggleEditMode: string
+  toolBrush: string
+  toolFill: string
+  toolEraser: string
+  toolEyedropper: string
+  toolPan: string
+  undo: string
+  redo: string
+}
+
 export interface AppStoreState {
   originalImage: File | null
   originalImageUrl: string
@@ -18,6 +31,7 @@ export interface AppStoreState {
   showNumbers: boolean
   lockAspectRatio: boolean
   padToMultipleOf5: boolean
+  exportScale: number
   infoText: string
   perlerColors: PerlerColor[]
   patternGrid: PatternCell[][]
@@ -27,6 +41,8 @@ export interface AppStoreState {
   editMode: boolean
   undoStack: PatternCell[][][]
   redoStack: PatternCell[][][]
+  shortcutPreset: ShortcutPresetName
+  customShortcutConfig: ShortcutConfig | null
 }
 
 export interface CropperImageData {

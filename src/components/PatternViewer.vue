@@ -49,8 +49,10 @@ const containerRef = ref<HTMLElement | null>(null)
 
 let rafId: number | null = null
 
+const showCoordBorder = computed(() => !showNumbers.value)
 const cellSize = computed(() => (showNumbers.value ? 40 : 20))
 const axisMargin = computed(() => (showNumbers.value ? 44 : 12))
+const borderOffset = computed(() => (showCoordBorder.value ? 1 : 0))
 
 const initCanvasSize = (): void => {
   if (!patternCanvas.value || !containerRef.value) return
@@ -103,6 +105,7 @@ const drawPattern = (): void => {
     cellSize: cellSize.value,
     axisMargin: axisMargin.value,
     showNumbers: showNumbers.value,
+    showCoordinateBorder: showCoordBorder.value,
     gridLineInterval: 5,
     highlightedColorKeys: props.highlightedColorKeys
   })
@@ -114,8 +117,10 @@ const fitToContainer = (): void => {
   if (!containerRef.value) return
   const cw = containerRef.value.clientWidth
   const ch = containerRef.value.clientHeight
-  const pw = gridWidth.value * cellSize.value + axisMargin.value * 2
-  const ph = gridHeight.value * cellSize.value + axisMargin.value * 2
+  const effW = gridWidth.value + borderOffset.value * 2
+  const effH = gridHeight.value + borderOffset.value * 2
+  const pw = effW * cellSize.value + axisMargin.value * 2
+  const ph = effH * cellSize.value + axisMargin.value * 2
   if (!pw || !ph || !cw || !ch) return
 
   viewScale.value = Math.min(cw / pw, ch / ph)

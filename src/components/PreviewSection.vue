@@ -101,8 +101,10 @@ const selectionEnd = ref<Point | null>(null)
 
 let rafId: number | null = null
 
+const showCoordBorder = computed(() => !showNumbers.value)
 const cellSize = computed(() => (showNumbers.value ? 40 : 20))
 const axisMargin = computed(() => (showNumbers.value ? 44 : 12))
+const borderOffset = computed(() => (showCoordBorder.value ? 1 : 0))
 
 const getDisplayScale = (): { x: number; y: number } => {
   return { x: viewScale.value, y: viewScale.value }
@@ -159,6 +161,7 @@ const drawPattern = (): void => {
     cellSize: cellSize.value,
     axisMargin: axisMargin.value,
     showNumbers: showNumbers.value,
+    showCoordinateBorder: showCoordBorder.value,
     gridLineInterval: 5
   })
 
@@ -169,8 +172,10 @@ const fitToContainer = (): void => {
   if (!containerRef.value) return
   const cw = containerRef.value.clientWidth
   const ch = containerRef.value.clientHeight
-  const pw = gridWidth.value * cellSize.value + axisMargin.value * 2
-  const ph = gridHeight.value * cellSize.value + axisMargin.value * 2
+  const effW = gridWidth.value + borderOffset.value * 2
+  const effH = gridHeight.value + borderOffset.value * 2
+  const pw = effW * cellSize.value + axisMargin.value * 2
+  const ph = effH * cellSize.value + axisMargin.value * 2
   if (!pw || !ph || !cw || !ch) return
 
   viewScale.value = Math.min(cw / pw, ch / ph)
@@ -211,8 +216,14 @@ const selectionOverlayStyle = computed<Record<string, string>>(() => {
 })
 
 // --- 边缘扩展手柄 ---
-const gridPixelLeft = computed(() => viewOffsetX.value + viewScale.value * axisMargin.value)
-const gridPixelTop = computed(() => viewOffsetY.value + viewScale.value * axisMargin.value)
+const gridPixelLeft = computed(
+  () =>
+    viewOffsetX.value + viewScale.value * (axisMargin.value + borderOffset.value * cellSize.value)
+)
+const gridPixelTop = computed(
+  () =>
+    viewOffsetY.value + viewScale.value * (axisMargin.value + borderOffset.value * cellSize.value)
+)
 const gridPixelRight = computed(
   () => gridPixelLeft.value + viewScale.value * gridWidth.value * cellSize.value
 )
@@ -337,8 +348,9 @@ const getCanvasPointerPos = (e: PointerEvent): { x: number; y: number } => {
 
 const getGridCell = (e: PointerEvent): Point | null => {
   const pointer = getCanvasPointerPos(e)
-  const x = Math.floor((pointer.x - axisMargin.value) / cellSize.value)
-  const y = Math.floor((pointer.y - axisMargin.value) / cellSize.value)
+  const bo = borderOffset.value
+  const x = Math.floor((pointer.x - axisMargin.value) / cellSize.value) - bo
+  const y = Math.floor((pointer.y - axisMargin.value) / cellSize.value) - bo
   const inGrid = x >= 0 && x < gridWidth.value && y >= 0 && y < gridHeight.value
   return { x, y, inGrid }
 }
@@ -493,8 +505,12 @@ const zoomOut = (): void => {
 
 const getFullResCanvas = (): HTMLCanvasElement | null => {
   if (!patternGrid.value.length) return null
-  const pw = gridWidth.value * cellSize.value + axisMargin.value * 2
-  const ph = gridHeight.value * cellSize.value + axisMargin.value * 2
+  const scale = appStore.exportScale
+  const bo = borderOffset.value
+  const gw = gridWidth.value + bo * 2
+  const gh = gridHeight.value + bo * 2
+  const pw = gw * cellSize.value * scale + axisMargin.value * 2
+  const ph = gh * cellSize.value * scale + axisMargin.value * 2
   const c = document.createElement('canvas')
   c.width = pw
   c.height = ph
@@ -503,9 +519,10 @@ const getFullResCanvas = (): HTMLCanvasElement | null => {
   drawPatternToCanvas(ctx, c, patternGrid.value, {
     gridWidth: gridWidth.value,
     gridHeight: gridHeight.value,
-    cellSize: cellSize.value,
+    cellSize: cellSize.value * scale,
     axisMargin: axisMargin.value,
     showNumbers: showNumbers.value,
+    showCoordinateBorder: showCoordBorder.value,
     gridLineInterval: 5
   })
   return c

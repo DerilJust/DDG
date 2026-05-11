@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { ElMessage } from 'element-plus'
 import colorSystemMapping from '../colorMap/colorSystemMapping.json'
 import {
   ceilToMultipleOf5,
@@ -12,7 +13,9 @@ import {
 } from '../utils/patternUtils'
 import { clonePatternGrid, fillConnectedRegion } from '../utils/editUtils'
 import { decompressPatternGrid } from '../utils/compressionUtils'
-import type { AppStoreState } from '../types'
+import { loadCustomShortcuts, saveCustomShortcuts } from '../utils/shortcutStorage'
+import { SHORTCUT_PRESETS } from '../composables/useKeyboardShortcuts'
+import type { AppStoreState, ShortcutPresetName, ShortcutConfig } from '../types'
 import type { PendingSelection } from '../utils/selectionUtils'
 
 const createBlankGrid = (width: number, height: number) => {
@@ -42,6 +45,7 @@ export const useAppStore = defineStore('app', {
     showNumbers: false,
     lockAspectRatio: true,
     padToMultipleOf5: true,
+    exportScale: 1,
     infoText: '请上传图片并生成图纸',
     perlerColors: [],
     patternGrid: createBlankGrid(30, 30),
@@ -50,7 +54,9 @@ export const useAppStore = defineStore('app', {
     selectedTool: 'brush',
     editMode: false,
     undoStack: [],
-    redoStack: []
+    redoStack: [],
+    shortcutPreset: 'default',
+    customShortcutConfig: null
   }),
   getters: {
     patternPalette: (state) =>
@@ -67,6 +73,12 @@ export const useAppStore = defineStore('app', {
       if (!width || !height) return '暂无图片'
       const ratio = gcd(width, height)
       return `${width / ratio}:${height / ratio}`
+    },
+    activeShortcutConfig(): ShortcutConfig {
+      if (this.shortcutPreset === 'custom' && this.customShortcutConfig) {
+        return this.customShortcutConfig
+      }
+      return SHORTCUT_PRESETS[this.shortcutPreset]
     }
   },
   actions: {
@@ -93,6 +105,9 @@ export const useAppStore = defineStore('app', {
     },
     setPadToMultipleOf5(value: boolean) {
       this.padToMultipleOf5 = value
+    },
+    setExportScale(scale: number) {
+      this.exportScale = scale
     },
     setGridWidth(width: number) {
       this.gridWidth = width
@@ -299,11 +314,11 @@ export const useAppStore = defineStore('app', {
     },
     async generatePattern() {
       if (!this.originalImageUrl) {
-        alert('请先上传图片')
+        ElMessage.warning('请先上传图片')
         return
       }
       if (!this.perlerColors.length) {
-        alert('颜色数据未加载完成，请稍后重试')
+        ElMessage.warning('颜色数据未加载完成，请稍后重试')
         return
       }
 
@@ -381,6 +396,20 @@ export const useAppStore = defineStore('app', {
       this.infoText = `拼豆图纸已生成: ${effectiveWidth}x${effectiveHeight} 网格, ${this.colorCount} 种颜色`
     },
 
+    setShortcutPreset(name: ShortcutPresetName) {
+      this.shortcutPreset = name
+    },
+    setCustomShortcutConfig(config: ShortcutConfig) {
+      this.customShortcutConfig = config
+      saveCustomShortcuts(config)
+    },
+    loadShortcutConfig() {
+      const saved = loadCustomShortcuts()
+      if (saved) {
+        this.shortcutPreset = 'custom'
+        this.customShortcutConfig = saved
+      }
+    },
     importFromCompressed(compressed: string): boolean {
       const result = decompressPatternGrid(compressed)
       if (!result) return false

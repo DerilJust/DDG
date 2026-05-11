@@ -102,6 +102,28 @@
               <span :class="['switch-label', padToMultipleOf5 ? 'active-text' : '']">开启</span>
             </div>
           </el-form-item>
+
+          <!-- 导出倍率 -->
+          <el-form-item label="导出倍率">
+            <el-select v-model="exportScale" class="custom-select">
+              <el-option label="1x (标准)" :value="1" />
+              <el-option label="2x (高清)" :value="2" />
+              <el-option label="3x (超清)" :value="3" />
+              <el-option label="4x (极清)" :value="4" />
+            </el-select>
+          </el-form-item>
+
+          <!-- 快捷键预设 -->
+          <el-form-item label="快捷键">
+            <div class="shortcut-row">
+              <el-select v-model="shortcutPreset" class="custom-select" @change="onPresetChange">
+                <el-option label="默认" value="default" />
+                <el-option label="类PS风格" value="photoshop" />
+                <el-option label="自定义" value="custom" />
+              </el-select>
+              <el-button size="small" @click="showShortcutDialog = true">编辑</el-button>
+            </div>
+          </el-form-item>
         </el-form>
       </div>
       <!-- 底部按钮 -->
@@ -120,14 +142,37 @@
         </el-button>
       </div>
     </el-card>
+
+    <!-- 快捷键编辑对话框 -->
+    <el-dialog v-model="showShortcutDialog" title="编辑快捷键" width="400px">
+      <div class="shortcut-edit-list">
+        <div v-for="item in shortcutItems" :key="item.key" class="shortcut-edit-row">
+          <span class="shortcut-edit-label">{{ item.label }}</span>
+          <el-button
+            size="small"
+            :class="{ recording: recordingKey === item.key }"
+            @click="startRecording(item.key)"
+          >
+            {{ recordingKey === item.key ? '按下按键...' : formatKey(editingConfig[item.key]) }}
+          </el-button>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showShortcutDialog = false">取消</el-button>
+        <el-button type="primary" @click="saveShortcuts">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed, reactive, ref } from 'vue'
 import { useAppStore } from '../store/appStore'
 import { storeToRefs } from 'pinia'
 import { useAspectRatioLock } from '../composables/useAspectRatioLock'
+import { SHORTCUT_PRESETS } from '../composables/useKeyboardShortcuts'
 import { MagicStick, Download, Setting } from '@element-plus/icons-vue'
+import type { ShortcutConfig, ShortcutPresetName } from '../types'
 
 const emit = defineEmits(['download'])
 const appStore = useAppStore()
@@ -138,8 +183,14 @@ const {
   selectedBrand,
   showNumbers,
   lockAspectRatio,
-  padToMultipleOf5
+  padToMultipleOf5,
+  shortcutPreset
 } = storeToRefs(appStore)
+
+const exportScale = computed({
+  get: () => appStore.exportScale,
+  set: (val: number) => appStore.setExportScale(val)
+})
 
 const { imageRatio } = useAspectRatioLock()
 
@@ -149,6 +200,75 @@ const generatePattern = (): void => {
 
 const downloadPattern = (): void => {
   emit('download')
+}
+
+// --- 快捷键预设与编辑 ---
+const showShortcutDialog = ref(false)
+const recordingKey = ref<string | null>(null)
+const editingConfig = reactive<ShortcutConfig>({
+  toggleEditMode: 'Tab',
+  toolBrush: 'B',
+  toolFill: 'G',
+  toolEraser: 'E',
+  toolEyedropper: 'I',
+  toolPan: 'H',
+  undo: 'Ctrl+Z',
+  redo: 'Ctrl+Y'
+})
+
+const shortcutItems: Array<{ key: keyof ShortcutConfig; label: string }> = [
+  { key: 'toggleEditMode', label: '切换编辑模式' },
+  { key: 'toolBrush', label: '画笔工具' },
+  { key: 'toolFill', label: '填充工具' },
+  { key: 'toolEraser', label: '橡皮工具' },
+  { key: 'toolEyedropper', label: '吸管工具' },
+  { key: 'toolPan', label: '手形工具' },
+  { key: 'undo', label: '撤销' },
+  { key: 'redo', label: '重做' }
+]
+
+function formatKey(key: string): string {
+  return key
+    .replace(/Ctrl\+/g, 'Ctrl + ')
+    .replace(/Shift\+/g, 'Shift + ')
+    .replace(/Alt\+/g, 'Alt + ')
+}
+
+function onPresetChange(value: ShortcutPresetName) {
+  appStore.setShortcutPreset(value)
+  if (value !== 'custom') {
+    Object.assign(editingConfig, SHORTCUT_PRESETS[value])
+  } else if (appStore.customShortcutConfig) {
+    Object.assign(editingConfig, appStore.customShortcutConfig)
+  }
+}
+
+function startRecording(key: string) {
+  recordingKey.value = key
+  const onKeyDown = (e: KeyboardEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const parts: string[] = []
+    if (e.ctrlKey) parts.push('Ctrl')
+    if (e.shiftKey) parts.push('Shift')
+    if (e.altKey) parts.push('Alt')
+    if (e.key !== 'Control' && e.key !== 'Shift' && e.key !== 'Alt') {
+      parts.push(e.key === ' ' ? 'Space' : e.key.length === 1 ? e.key.toUpperCase() : e.key)
+    }
+    const combo = parts.join('+')
+    if (combo && recordingKey.value) {
+      ;(editingConfig as Record<string, string>)[recordingKey.value] = combo
+    }
+    recordingKey.value = null
+    window.removeEventListener('keydown', onKeyDown, true)
+  }
+  window.addEventListener('keydown', onKeyDown, true)
+}
+
+function saveShortcuts() {
+  appStore.setShortcutPreset('custom')
+  appStore.setCustomShortcutConfig({ ...editingConfig })
+  showShortcutDialog.value = false
 }
 </script>
 
@@ -278,6 +398,50 @@ const downloadPattern = (): void => {
 
 .btn-download {
   background-color: #e6a23c;
+}
+
+.shortcut-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.shortcut-row .custom-select {
+  flex: 1;
+}
+
+.shortcut-edit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shortcut-edit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.shortcut-edit-label {
+  font-size: 14px;
+  color: #606266;
+}
+
+.shortcut-edit-row .el-button.recording {
+  border-color: #409eff;
+  color: #409eff;
+  animation: pulse-border 1s infinite;
+}
+
+@keyframes pulse-border {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(64, 158, 255, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(64, 158, 255, 0);
+  }
 }
 
 :deep(.el-form-item__label) {
