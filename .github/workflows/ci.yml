@@ -64,8 +64,8 @@ jobs:
         uses: easingthemes/ssh-deploy@v6.0.1
         with:
           SSH_PRIVATE_KEY: ${{ secrets.TENCENT_SSH_KEY }}
-          ARGS: "-avz --delete"
-          SOURCE: "dist/"
+          ARGS: '-avz --delete'
+          SOURCE: 'dist/'
           REMOTE_HOST: ${{ secrets.TENCENT_HOST }}
           REMOTE_USER: ${{ secrets.TENCENT_USER }}
-          TARGET: "/opt/1panel/www/sites/ddg/index/"
+          TARGET: '/opt/1panel/www/sites/ddg/index/'
