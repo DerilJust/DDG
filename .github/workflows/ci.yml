@@ -61,7 +61,7 @@ jobs:
           path: dist/
 
       - name: Deploy via rsync
-        uses: easingthemes/ssh-deploy@v6.0.1
+        uses: easingthemes/ssh-deploy@v6.0.3
         with:
           SSH_PRIVATE_KEY: ${{ secrets.TENCENT_SSH_KEY }}
           ARGS: '-avz --delete'
