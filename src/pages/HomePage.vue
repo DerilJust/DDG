@@ -1,8 +1,8 @@
 <template>
   <div class="home-page">
     <!-- Hero Section -->
-    <section class="hero">
-      <div class="hero-bg-grid">
+    <section ref="heroRef" class="hero" @mousemove="onHeroMouseMove" @mouseleave="onHeroMouseLeave">
+      <div class="hero-bg-grid" :style="heroGridStyle">
         <div v-for="i in 168" :key="i" class="hero-bead" :style="heroBeadStyle(i)" />
       </div>
       <div class="hero-overlay" />
@@ -48,14 +48,14 @@
           </el-button>
         </div>
         <div class="hero-mockup">
-          <div class="mockup-card">
+          <div class="mockup-card" :style="mockupCardStyle">
             <div class="mockup-dots">
-              <span v-for="row in 6" :key="row" class="mockup-row">
+              <span v-for="row in mockupRows" :key="row" class="mockup-row">
                 <span
-                  v-for="col in 10"
+                  v-for="col in mockupCols"
                   :key="col"
                   class="mockup-dot"
-                  :style="{ background: randomMockColor() }"
+                  :style="{ background: getMockBead(row - 1, col - 1) }"
                 />
               </span>
             </div>
@@ -66,7 +66,7 @@
     </section>
 
     <!-- Features Section -->
-    <section id="features" class="features">
+    <section id="features" class="features reveal">
       <div class="section-header">
         <h2 class="section-title">核心功能</h2>
         <p class="section-subtitle">一站式拼豆图纸制作流程</p>
@@ -80,7 +80,7 @@
           v-for="(feat, idx) in features"
           :key="feat.title"
         >
-          <div class="feature-card" :style="{ animationDelay: `${idx * 0.1}s` }">
+          <div class="feature-card reveal" :style="{ transitionDelay: `${idx * 0.1}s` }">
             <div class="feature-icon-wrap" :style="{ background: feat.gradient }">
               <el-icon :size="32">
                 <component :is="feat.icon" />
@@ -94,7 +94,7 @@
     </section>
 
     <!-- How It Works -->
-    <section class="how-it-works">
+    <section class="how-it-works reveal">
       <div class="section-header">
         <h2 class="section-title">如何使用</h2>
         <p class="section-subtitle">四步生成您专属的拼豆图纸</p>
@@ -118,7 +118,7 @@
     </section>
 
     <!-- Color Showcase -->
-    <section class="color-showcase">
+    <section class="color-showcase reveal">
       <div class="section-header">
         <h2 class="section-title">292 种真实拼豆颜色</h2>
         <p class="section-subtitle">覆盖多个主流品牌，精准还原您的创意</p>
@@ -139,11 +139,11 @@
     </section>
 
     <!-- Stats -->
-    <section class="stats">
+    <section id="stats" class="stats reveal">
       <el-row :gutter="20" justify="center">
         <el-col :span="6" v-for="stat in stats" :key="stat.label">
           <div class="stat-card">
-            <span class="stat-value">{{ stat.value }}</span>
+            <span class="stat-value">{{ stat.display }}</span>
             <span class="stat-label">{{ stat.label }}</span>
           </div>
         </el-col>
@@ -159,7 +159,7 @@
           <el-icon>
             <Edit />
           </el-icon>
-          免费开始使用
+          开始使用
         </el-button>
       </router-link>
     </section>
@@ -167,10 +167,24 @@
     <footer class="home-footer">
       <p>拼豆图纸生成器 &copy; {{ new Date().getFullYear() }} · Built with Vue 3 + Element Plus</p>
     </footer>
+
+    <!-- Loading overlay -->
+    <div class="page-loading" :class="{ 'loading-done': !isLoading }">
+      <div class="loading-beads">
+        <span
+          v-for="i in 4"
+          :key="i"
+          class="loading-dot"
+          :style="{ animationDelay: `${i * 0.15}s` }"
+        />
+      </div>
+      <p class="loading-text">加载中...</p>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { onMounted, onUnmounted, ref, reactive, nextTick } from 'vue'
 import {
   Edit,
   ArrowDown,
@@ -180,7 +194,9 @@ import {
   Download,
   Upload,
   Crop,
-  MagicStick
+  MagicStick,
+  Aim,
+  Document
 } from '@element-plus/icons-vue'
 
 const features = [
@@ -199,25 +215,25 @@ const features = [
   {
     icon: EditPen,
     title: '交互式编辑',
-    desc: '画笔、填充、橡皮擦、吸管四大工具，支持无限撤销/重做，随心微调每一颗拼豆。',
+    desc: '画笔、填充、橡皮擦、吸管四大工具，支持无限撤销/重做与自定义快捷键，随心微调每一颗拼豆。',
     gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)'
   },
   {
-    icon: MagicStick,
-    title: '色阶量化控制',
-    desc: '1-50 级色阶可调，从极简到丰富，精准控制图纸的颜色数量和视觉风格。',
+    icon: Aim,
+    title: '专注串珠模式',
+    desc: '导入压缩数据即可进入专注模式，高亮特定颜色、一键定位，串珠时不再眼花缭乱。',
     gradient: 'linear-gradient(135deg, #43e97b, #38f9d7)'
   },
   {
     icon: Upload,
-    title: '一键导出下载',
-    desc: '高清 PNG 图纸导出，含颜色统计表和坐标标注，支持压缩数据分享。',
+    title: '多格式导出分享',
+    desc: '高清 PNG 图纸导出，含颜色统计表和坐标标注，支持 RLE 压缩字符串分享给其他拼豆爱好者。',
     gradient: 'linear-gradient(135deg, #fa709a, #fee140)'
   },
   {
-    icon: Crop,
-    title: '多格式预览',
-    desc: '原图对照、拼豆预览、导出预览三视图，缩放平移流畅，所见即所得。',
+    icon: Document,
+    title: '帮助文档与快捷键',
+    desc: '内置详细帮助页面，涵盖快速开始、参数说明、快捷键参考，支持自定义快捷键预设。',
     gradient: 'linear-gradient(135deg, #a18cd1, #fbc2eb)'
   }
 ]
@@ -250,10 +266,10 @@ const steps = [
 ]
 
 const stats = [
-  { value: '292', label: '真实拼豆颜色' },
-  { value: '5', label: '品牌编码系统' },
-  { value: '50', label: '最大色阶量化' },
-  { value: '50', label: '步撤销/重做' }
+  { value: 292, label: '真实拼豆颜色', display: 0 },
+  { value: 5, label: '品牌编码系统', display: 0 },
+  { value: 4, label: '功能页面', display: 0 },
+  { value: 50, label: '最大色阶量化', display: 0 }
 ]
 
 const brands = ['MARD', 'COCO', '漫漫', '盼盼', '咪小窝']
@@ -342,7 +358,98 @@ const mockPalette = [
   '#A0D668',
   '#80B0E0'
 ]
-const randomMockColor = () => mockPalette[Math.floor(Math.random() * mockPalette.length)]
+
+const isLoading = ref(true)
+
+// --- animated mockup beads ---
+const mockupRows = 6
+const mockupCols = 10
+const mockBeads = reactive(
+  Array.from(
+    { length: mockupRows * mockupCols },
+    () => mockPalette[Math.floor(Math.random() * mockPalette.length)]
+  )
+)
+let mockBeadTimer: ReturnType<typeof setInterval> | null = null
+
+function cycleMockBeads() {
+  const indices = new Set<number>()
+  while (indices.size < 8) indices.add(Math.floor(Math.random() * mockBeads.length))
+  for (const i of indices) {
+    mockBeads[i] = mockPalette[Math.floor(Math.random() * mockPalette.length)]
+  }
+}
+
+function getMockBead(row: number, col: number) {
+  return mockBeads[row * mockupCols + col]
+}
+
+// --- stats counter animation ---
+let statsAnimated = false
+function animateStats() {
+  if (statsAnimated) return
+  statsAnimated = true
+  for (const stat of stats) {
+    const target = stat.value
+    const duration = 1500
+    const start = performance.now()
+    function tick(now: number) {
+      const elapsed = now - start
+      const progress = Math.min(elapsed / duration, 1)
+      // ease-out
+      const eased = 1 - Math.pow(1 - progress, 3)
+      stat.display = Math.round(eased * target)
+      if (progress < 1) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  }
+}
+
+// --- scroll reveal ---
+let revealObserver: IntersectionObserver | null = null
+
+function setupRevealObserver() {
+  revealObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('revealed')
+          if (entry.target.id === 'stats') animateStats()
+          revealObserver?.unobserve(entry.target)
+        }
+      }
+    },
+    { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+  )
+  document.querySelectorAll('.reveal').forEach((el) => revealObserver!.observe(el))
+}
+
+// --- hero parallax ---
+const heroRef = ref<HTMLElement | null>(null)
+const heroGridStyle = ref<Record<string, string>>({})
+const mockupCardStyle = ref<Record<string, string>>({})
+
+function onHeroMouseMove(e: MouseEvent) {
+  const el = heroRef.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  const x = (e.clientX - rect.left) / rect.width - 0.5
+  const y = (e.clientY - rect.top) / rect.height - 0.5
+  heroGridStyle.value = {
+    transform: `translate(${x * -12}px, ${y * -12}px)`
+  }
+  mockupCardStyle.value = {
+    transform: `translate(${x * 18}px, ${y * 18}px) rotateX(${y * -3}deg) rotateY(${x * 3}deg)`
+  }
+}
+
+function onHeroMouseLeave() {
+  heroGridStyle.value = { transform: 'translate(0, 0)', transition: 'transform 0.6s ease-out' }
+  mockupCardStyle.value = {
+    transform: 'translate(0, 0) rotateX(0) rotateY(0)',
+    transition: 'transform 0.6s ease-out'
+  }
+}
 
 const heroBeadStyle = (i: number) => {
   const colors = ['#667eea22', '#764ba222', '#f093fb18', '#f5576c18', '#4facfe18', '#ffffff10']
@@ -360,6 +467,22 @@ const heroBeadStyle = (i: number) => {
 const scrollTo = (id: string) => {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
 }
+
+onMounted(async () => {
+  setupRevealObserver()
+  mockBeadTimer = setInterval(cycleMockBeads, 2200)
+  await nextTick()
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      isLoading.value = false
+    })
+  })
+})
+
+onUnmounted(() => {
+  revealObserver?.disconnect()
+  if (mockBeadTimer) clearInterval(mockBeadTimer)
+})
 </script>
 
 <style scoped>
@@ -388,6 +511,8 @@ const scrollTo = (id: string) => {
   gap: 2px;
   padding: 40px;
   opacity: 0.6;
+  transition: transform 0.15s ease-out;
+  will-change: transform;
 }
 
 .hero-bead {
@@ -529,6 +654,9 @@ const scrollTo = (id: string) => {
   border-radius: 16px;
   padding: 20px;
   display: inline-block;
+  transition: transform 0.15s ease-out;
+  will-change: transform;
+  perspective: 200px;
 }
 
 .mockup-dots {
@@ -547,7 +675,9 @@ const scrollTo = (id: string) => {
   width: 18px;
   height: 18px;
   border-radius: 3px;
-  transition: transform 0.2s;
+  transition:
+    transform 0.2s,
+    background 1.2s ease-in-out;
 }
 
 .mockup-dot:hover {
@@ -597,7 +727,6 @@ const scrollTo = (id: string) => {
   border: 1px solid #f0f0f0;
   transition: all 0.35s ease;
   height: 100%;
-  animation: fadeInUp 0.6s ease both;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 }
 
@@ -607,16 +736,22 @@ const scrollTo = (id: string) => {
   border-color: #e0e0e0;
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
+/* ---- Scroll Reveal ---- */
+.reveal {
+  opacity: 0;
+  transform: translateY(36px);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease;
+}
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.feature-card.revealed:hover {
+  transform: translateY(-8px);
 }
 
 .feature-icon-wrap {
@@ -753,6 +888,7 @@ const scrollTo = (id: string) => {
   display: block;
   font-size: 42px;
   font-weight: 800;
+  line-height: 1.15;
   background: linear-gradient(135deg, #667eea, #f093fb);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -817,5 +953,71 @@ const scrollTo = (id: string) => {
   .stats .stat-value {
     font-size: 28px;
   }
+}
+
+/* ---- Page Loading Overlay ---- */
+.page-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  background: linear-gradient(160deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%);
+  opacity: 1;
+  transition: opacity 0.35s ease;
+  pointer-events: all;
+}
+
+.page-loading.loading-done {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-beads {
+  display: flex;
+  gap: 12px;
+}
+
+.loading-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #667eea, #f093fb);
+  animation: beadBounce 0.8s ease-in-out infinite;
+}
+
+.loading-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+.loading-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.loading-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.loading-dot:nth-child(4) {
+  animation-delay: 0.45s;
+}
+
+@keyframes beadBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-16px);
+    opacity: 1;
+  }
+}
+
+.loading-text {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 2px;
+  margin: 0;
 }
 </style>

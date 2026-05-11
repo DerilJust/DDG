@@ -52,11 +52,24 @@
         </div>
       </el-main>
     </el-container>
+
+    <!-- Loading overlay -->
+    <div class="page-loading" :class="{ 'loading-done': !isLoading }">
+      <div class="loading-beads">
+        <span
+          v-for="i in 4"
+          :key="i"
+          class="loading-dot"
+          :style="{ animationDelay: `${i * 0.15}s` }"
+        />
+      </div>
+      <p class="loading-text">加载中...</p>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import { Edit, Expand, Fold } from '@element-plus/icons-vue'
 import { useAppStore } from '../store/appStore'
@@ -69,6 +82,7 @@ const { patternGrid, gridWidth, colorStats, perlerColors } = storeToRefs(appStor
 
 const importSectionRef = ref<InstanceType<typeof ImportSection> | null>(null)
 const highlightedKeys = reactive(new Set<string>())
+const isLoading = ref(true)
 const isCollapsed = ref(false)
 
 function toggleSidebar() {
@@ -93,13 +107,19 @@ function handleImport(compressed: string) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (!perlerColors.value.length) {
     appStore.loadColorData()
   }
   if (patternGrid.value.length && colorStats.value.length === 0) {
     appStore.refreshColorStats()
   }
+  await nextTick()
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      isLoading.value = false
+    })
+  })
 })
 </script>
 
@@ -179,5 +199,58 @@ onMounted(() => {
 
 .sidebar-toggle-fab:hover {
   transform: scale(1.1);
+}
+
+/* ---- Page Loading Overlay ---- */
+.page-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  background: linear-gradient(160deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%);
+  opacity: 1;
+  transition: opacity 0.35s ease;
+  pointer-events: all;
+}
+
+.page-loading.loading-done {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-beads {
+  display: flex;
+  gap: 12px;
+}
+
+.loading-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #667eea, #f093fb);
+  animation: beadBounce 0.8s ease-in-out infinite;
+}
+
+@keyframes beadBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-16px);
+    opacity: 1;
+  }
+}
+
+.loading-text {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 2px;
+  margin: 0;
 }
 </style>

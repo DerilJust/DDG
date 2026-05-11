@@ -1,3 +1,8 @@
-1.更新readme和Claude
-2.修改helpPage
-3.新icon和新名字
+-更新readme和Claude
+-重新设计homepage
+-新icon和新名字
+-考虑一个本地拼豆列表的功能
+-列表导出为json
+-导入单独图纸或列表
+-颜色替换功能
+-解决切换页面的闪烁问题
