@@ -21,10 +21,13 @@
       <section id="quick-start" class="doc-section">
         <h2 class="section-title"><span class="title-number">1</span>快速开始</h2>
         <div class="steps-grid">
-          <div v-for="(s, i) in quickSteps" :key="i" class="step-card">
+          <div v-for="(s, i) in quickSteps" :key="i" :class="['step-card', `step-card--${i + 1}`]">
             <div class="step-num">{{ i + 1 }}</div>
+            <div class="step-connector"></div>
             <div class="step-body">
-              <h4>{{ s.title }}</h4>
+              <h4>
+                <el-icon :size="16"><component :is="s.icon" /></el-icon>{{ s.title }}
+              </h4>
               <p>{{ s.desc }}</p>
             </div>
           </div>
@@ -127,11 +130,24 @@
         <a href="https://github.com/DerilJust/DDG" target="_blank">GitHub</a>
       </footer>
     </main>
+
+    <!-- Loading overlay -->
+    <div class="page-loading" :class="{ 'loading-done': !isLoading }">
+      <div class="loading-beads">
+        <span
+          v-for="i in 4"
+          :key="i"
+          class="loading-dot"
+          :style="{ animationDelay: `${i * 0.15}s` }"
+        />
+      </div>
+      <p class="loading-text">加载中...</p>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, nextTick } from 'vue'
 import {
   Document,
   Edit,
@@ -143,11 +159,15 @@ import {
   Delete,
   Aim,
   Pointer,
-  InfoFilled
+  InfoFilled,
+  Upload,
+  Crop,
+  Picture
 } from '@element-plus/icons-vue'
 import { SHORTCUT_PRESETS } from '../composables/useKeyboardShortcuts'
 import type { ShortcutConfig } from '../types'
 
+const isLoading = ref(true)
 const activeSection = ref('quick-start')
 
 const sections = [
@@ -160,18 +180,25 @@ const sections = [
 
 const quickSteps = [
   {
+    icon: Upload,
     title: '上传图片',
     desc: '在编辑器页面左侧点击上传区域，选择图片（支持 PNG、JPG、WebP 等格式）'
   },
   {
+    icon: Crop,
     title: '裁剪与设置',
     desc: '拖拽调整裁剪区域，使用预设比例按钮快速裁剪，设置目标网格尺寸和颜色数量'
   },
   {
+    icon: Picture,
     title: '生成图纸',
     desc: '确认裁剪后点击"生成图纸"，系统自动将图片颜色映射到拼豆颜色并生成网格图案'
   },
-  { title: '编辑与导出', desc: '使用编辑工具微调图纸，在导出预览标签页下载 PNG 或分享压缩数据' }
+  {
+    icon: Edit,
+    title: '编辑与导出',
+    desc: '使用编辑工具微调图纸，在导出预览标签页下载 PNG 或分享压缩数据'
+  }
 ]
 
 const editorTools = [
@@ -221,7 +248,7 @@ function scrollTo(id: string) {
 
 let observer: IntersectionObserver | null = null
 
-onMounted(() => {
+onMounted(async () => {
   observer = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
@@ -236,6 +263,12 @@ onMounted(() => {
     const el = document.getElementById(section.id)
     if (el) observer.observe(el)
   }
+  await nextTick()
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      isLoading.value = false
+    })
+  })
 })
 
 onUnmounted(() => {
@@ -342,43 +375,104 @@ onUnmounted(() => {
 .steps-grid {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
 }
 
 .step-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   background: #fff;
   border: 1px solid #e9edf4;
+  border-left: 3px solid #e9edf4;
   border-radius: 10px;
-  padding: 16px 20px;
-  transition: box-shadow 0.2s;
+  padding: 20px 24px;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.step-card:not(:last-child) {
+  margin-bottom: 16px;
 }
 
 .step-card:hover {
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border-left-color: #409eff;
+}
+
+.step-card--1 {
+  border-left-color: #409eff;
+}
+.step-card--2 {
+  border-left-color: #67c23a;
+}
+.step-card--3 {
+  border-left-color: #e6a23c;
+}
+.step-card--4 {
+  border-left-color: #f56c6c;
 }
 
 .step-num {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  font-size: 14px;
+  width: 40px;
+  height: 40px;
+  font-size: 16px;
   font-weight: 700;
-  color: #409eff;
-  background: #ecf5ff;
+  color: #fff;
   border-radius: 50%;
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.step-card--1 .step-num {
+  background: #409eff;
+}
+.step-card--2 .step-num {
+  background: #67c23a;
+}
+.step-card--3 .step-num {
+  background: #e6a23c;
+}
+.step-card--4 .step-num {
+  background: #f56c6c;
+}
+
+/* connector line between step numbers */
+.step-connector {
+  position: absolute;
+  left: 39px;
+  top: 64px;
+  bottom: -16px;
+  width: 2px;
+  background: #dcdfe6;
+  border-radius: 1px;
+}
+
+.step-card:last-child .step-connector {
+  display: none;
+}
+
+.step-body {
+  flex: 1;
+  min-width: 0;
 }
 
 .step-body h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 15px;
   font-weight: 600;
   color: #303133;
-  margin: 0 0 4px 0;
+  margin: 0 0 6px 0;
+}
+
+.step-body h4 .el-icon {
+  flex-shrink: 0;
 }
 
 .step-body p {
@@ -444,6 +538,7 @@ onUnmounted(() => {
   border: 1px solid #e9edf4;
   border-radius: 10px;
   padding: 16px 20px;
+  margin-bottom: 16px;
 }
 
 .info-card h4 {
@@ -515,7 +610,6 @@ onUnmounted(() => {
 
 .shortcut-table th {
   padding: 12px 20px 8px;
-  text-align: left;
   font-size: 11px;
   font-weight: 600;
   color: #909399;
@@ -533,7 +627,6 @@ onUnmounted(() => {
 }
 
 .key-col {
-  text-align: left;
   white-space: nowrap;
 }
 
@@ -612,6 +705,59 @@ onUnmounted(() => {
 
 .help-footer a:hover {
   text-decoration: underline;
+}
+
+/* ---- Page Loading Overlay ---- */
+.page-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  background: linear-gradient(160deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%);
+  opacity: 1;
+  transition: opacity 0.35s ease;
+  pointer-events: all;
+}
+
+.page-loading.loading-done {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-beads {
+  display: flex;
+  gap: 12px;
+}
+
+.loading-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #667eea, #f093fb);
+  animation: beadBounce 0.8s ease-in-out infinite;
+}
+
+@keyframes beadBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-16px);
+    opacity: 1;
+  }
+}
+
+.loading-text {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 2px;
+  margin: 0;
 }
 </style>
 

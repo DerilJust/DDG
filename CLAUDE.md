@@ -20,12 +20,13 @@ eyedropper tools.
 
 - **Framework**: Vue 3 (Composition API / `<script setup>`)
 - **Language**: TypeScript (strict mode via `vue-tsc`)
-- **Build Tool**: Vite 6
+- **Build Tool**: Vite 8
 - **State Management**: Pinia 3
 - **UI Library**: Element Plus 2.8
 - **Router**: vue-router 4 (hash history)
 - **Rendering**: Canvas 2D API (no third-party canvas lib)
 - **Icons**: @element-plus/icons-vue
+- **Testing**: Vitest 4 + @vue/test-utils + happy-dom
 
 ## Directory Structure
 
@@ -36,11 +37,12 @@ src/
   App.vue                          # Root layout: header with nav tabs, <router-view>
   style.css                        # Global CSS variables, scrollbar, font-face
   router/
-    index.ts                       # Vue Router 4 config (hash history, 3 lazy-loaded routes)
+    index.ts                       # Vue Router 4 config (hash history, 4 lazy-loaded routes)
   pages/
     HomePage.vue                   # Landing page with hero section and feature cards
     EditorPage.vue                 # Full editor (sidebar + tabs + footer) -- migrated from App.vue
-    FocusBeadPage.vue              # Placeholder "coming soon" page
+    FocusBeadPage.vue              # Focus mode (import + color highlight + collapsible sidebar)
+    HelpPage.vue                   # Help/documentation page (quick start, editor, params, shortcuts)
   types/
     index.ts                       # All TypeScript interfaces (AppStoreState, CropperImageData, etc.)
   store/
@@ -48,6 +50,7 @@ src/
   composables/
     useAspectRatioLock.ts          # Composable: watches gridWidth/gridHeight, cross-updates
                                    # when lockAspectRatio is on, using image's aspect ratio
+    useKeyboardShortcuts.ts       # Composable: keyboard shortcut presets and registration
   utils/
     patternUtils.ts                # Color matching (findClosestColor), quantization
                                    # (quantizeColorsUtil), palette building, GCD, grid sizing
@@ -101,13 +104,14 @@ src/
 
 ### Routing
 
-Vue Router 4 with hash history (`createWebHashHistory`). Three routes:
+Vue Router 4 with hash history (`createWebHashHistory`). Four routes:
 
 | Path      | Page          | Description                                  |
 | --------- | ------------- | -------------------------------------------- |
 | `/`       | HomePage      | Landing page with hero, feature cards, stats |
 | `/editor` | EditorPage    | Full perler bead pattern editor              |
-| `/focus`  | FocusBeadPage | Placeholder ("coming soon")                  |
+| `/focus`  | FocusBeadPage | Focus mode (import + color highlight)        |
+| `/help`   | HelpPage      | Help/documentation page                      |
 
 ### Image Processing Pipeline
 
@@ -143,7 +147,7 @@ The composable `useAspectRatioLock` in UploadDialog:
 
 ```
 App.vue
-  |-- (header with nav tabs: Home, Editor, Focus)
+  |-- (header with nav tabs: Home, Editor, Focus, Help)
   |-- <router-view>
         |-- HomePage.vue
         |-- EditorPage.vue
@@ -156,6 +160,10 @@ App.vue
         |     |-- ExportPreview.vue
         |     |-- EditPalette.vue
         |-- FocusBeadPage.vue
+        |     |-- PatternViewer.vue
+        |     |-- ColorHighlightList.vue
+        |     |-- ImportSection.vue
+        |-- HelpPage.vue
 ```
 
 ### Communication Pattern
@@ -190,25 +198,21 @@ App.vue
 
 ## Build and Test Commands
 
-- `npm start` - Start development server (IMPORTANT: Never run this command directly; ask the user to start the server
-  as needed)
-- `npm run build` - Build production version
-- `npm run lint` - Run ESLint
-- `npm run lint-fix` - Run ESLint with auto-fix
-- `npm run format` - Run Prettier
-- `npm run test` - Run all tests
-- `npm run test:unit` - Run unit tests
-- `npm run test:integration` - Run integration tests
-- `npm run test:cpu` - Run CPU compatibility tests
-- `npm run ci-checks` - Run linting checks for CI
-- `vitest run tests/unit/test-gzip.js` - Run a single test file
+| Command                            | Description                                                    |
+| ---------------------------------- | -------------------------------------------------------------- |
+| `npm run dev`                      | Start Vite dev server (HMR)                                    |
+| `npm run build`                    | Type-check (`vue-tsc -b`) then production build (`vite build`) |
+| `npm run preview`                  | Preview production build locally                               |
+| `npm run lint`                     | Run ESLint                                                     |
+| `npm run format`                   | Run Prettier                                                   |
+| `npm run format:check`             | Check formatting with Prettier                                 |
+| `npm run type-check`               | Run TypeScript type checking                                   |
+| `npm run test`                     | Run all tests (vitest run)                                     |
+| `npm run test:watch`               | Run tests in watch mode                                        |
+| `npm run test:coverage`            | Run tests with coverage                                        |
+| `vitest run tests/path/to/test.ts` | Run a single test file                                         |
 
-### Code Coverage
-
-- `npm run coverage:unit` - Run unit tests with coverage
-- `npm run coverage:all-tests` - Run all tests with coverage
-- Coverage reports are generated in the `coverage` directory
-- HTML report includes line-by-line coverage visualization
+Coverage reports are generated in the `coverage` directory with an HTML line-by-line visualization.
 
 ## Code Style Guidelines
 
@@ -259,11 +263,6 @@ App.vue
   - Replace complex conditionals with more readable alternatives when possible
   - Ensure simplifications don't break existing behavior or assumptions
   - Try and modernise the code to use ES6+ features where possible
-
-- Prefer helper functions for repetitive operations (like the `appendParam` function)
-- Remove unnecessary type checking where types are expected to be correct
-- Replace complex conditionals with more readable alternatives when possible
-- Ensure simplifications don't break existing behavior or assumptions
 
 - **Constants and Magic Numbers**:
   - Local un-exported properties should be used for shared constants

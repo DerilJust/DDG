@@ -76,11 +76,24 @@
         </div>
       </el-container>
     </el-container>
+
+    <!-- Loading overlay -->
+    <div class="page-loading" :class="{ 'loading-done': !isLoading }">
+      <div class="loading-beads">
+        <span
+          v-for="i in 4"
+          :key="i"
+          class="loading-dot"
+          :style="{ animationDelay: `${i * 0.15}s` }"
+        />
+      </div>
+      <p class="loading-text">加载中...</p>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '../store/appStore'
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
@@ -109,13 +122,20 @@ const {
 
 const brandPalette = computed(() => buildBrandPalette(perlerColors.value, selectedBrand.value))
 
+const isLoading = ref(true)
 const previewSection = ref<InstanceType<typeof PreviewSection> | null>(null)
 const isCollapsed = ref(false)
 const activeTab = ref('pattern')
 
-onMounted(() => {
+onMounted(async () => {
   appStore.loadColorData()
   appStore.loadShortcutConfig()
+  await nextTick()
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      isLoading.value = false
+    })
+  })
 })
 
 useKeyboardShortcuts(() => appStore.activeShortcutConfig, {
@@ -260,5 +280,58 @@ const onEditRedo = () => {
   background: #fff;
   border: 1px solid #e4e7ed;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* ---- Page Loading Overlay ---- */
+.page-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  background: linear-gradient(160deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%);
+  opacity: 1;
+  transition: opacity 0.35s ease;
+  pointer-events: all;
+}
+
+.page-loading.loading-done {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-beads {
+  display: flex;
+  gap: 12px;
+}
+
+.loading-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #667eea, #f093fb);
+  animation: beadBounce 0.8s ease-in-out infinite;
+}
+
+@keyframes beadBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-16px);
+    opacity: 1;
+  }
+}
+
+.loading-text {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 2px;
+  margin: 0;
 }
 </style>

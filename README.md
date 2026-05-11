@@ -17,7 +17,7 @@
 - 视图操作：图纸预览支持缩放、平移，方便查看细节
 - 专注模式：高亮特定颜色，仅显示对应编号
 - 边缘扩展：编辑模式下拖拽四边手柄即可扩展图纸
-- 多页面路由：首页、编辑器、专注串珠页面
+- 多页面路由：首页、编辑器、专注串珠页面、帮助页面
 - 可收起侧边栏：编辑器和专注页面均支持收起侧边栏
 - CI/CD：GitHub Actions 自动检查代码质量、测试、构建并部署
 
@@ -103,11 +103,13 @@
 │   │   ├── ColorHighlightList.vue # 专注模式颜色高亮列表
 │   │   └── ImportSection.vue      # 专注模式压缩数据导入
 │   ├── composables/
-│   │   └── useAspectRatioLock.ts  # 宽高比锁定逻辑
+│   │   ├── useAspectRatioLock.ts  # 宽高比锁定逻辑
+│   │   └── useKeyboardShortcuts.ts # 键盘快捷键预设与注册
 │   ├── pages/
 │   │   ├── HomePage.vue           # 首页（Hero + 功能卡片 + GitHub 链接）
 │   │   ├── EditorPage.vue         # 编辑器主页面
-│   │   └── FocusBeadPage.vue      # 专注串珠页面（导入 + 颜色高亮 + 可收起侧栏）
+│   │   ├── FocusBeadPage.vue      # 专注串珠页面（导入 + 颜色高亮 + 可收起侧栏）
+│   │   └── HelpPage.vue           # 帮助文档页面（快速开始、编辑器、参数、快捷键）
 │   ├── router/
 │   │   └── index.ts               # Vue Router（Hash 模式）
 │   ├── store/
@@ -133,6 +135,7 @@
 ├── index.html
 ├── package.json
 ├── tsconfig.json
+├── tests/                          # 测试文件目录
 └── vite.config.ts
 ```
 
@@ -159,7 +162,7 @@
 
 - [ ] 国际化 (i18n)
 - [ ] 图纸库（本地保存/管理已生成的图纸）
-- [ ] 使用帮助页面
+- [x] 使用帮助页面
 - [ ] 编辑快捷键
 - [ ] 自适应大小（平板、手机）
 - [x] 导出图纸的坐标使用格子编号
