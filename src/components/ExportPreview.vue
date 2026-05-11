@@ -154,137 +154,12 @@ const generatePreview = (): void => {
   if (!previewCanvas.value || !patternGrid.value.length) return
 
   const cellSize = showNumbers.value ? 20 : 10
-  const axisMargin = showNumbers.value ? 44 : 12
-
-  const tempCanvas = document.createElement('canvas')
-  const tempCtx = tempCanvas.getContext('2d')
-  if (!tempCtx) return
-
-  tempCanvas.width = gridWidth.value * cellSize + axisMargin * 2
-  tempCanvas.height = gridHeight.value * cellSize + axisMargin * 2
-
-  drawPatternToCanvas(tempCtx, tempCanvas, patternGrid.value, {
-    gridWidth: gridWidth.value,
-    gridHeight: gridHeight.value,
-    cellSize,
-    axisMargin,
-    showNumbers: showNumbers.value,
-    gridLineInterval: 5
-  })
-
-  previewCanvas.value.width = tempCanvas.width
-  previewCanvas.value.height = tempCanvas.height
-  const ctx = previewCanvas.value.getContext('2d')
-  if (ctx) {
-    ctx.drawImage(tempCanvas, 0, 0)
-  }
-}
-
-function drawStatsPanel(
-  ctx: CanvasRenderingContext2D,
-  canvasWidth: number,
-  startY: number,
-  statsData: ColorStat[],
-  brand: string
-): number {
-  const columns = 3
-  const rowHeight = 48
-  const headerHeight = 120
-  const statsHeight = Math.ceil(statsData.length / columns) * rowHeight + headerHeight
-
-  ctx.fillStyle = '#f9fafb'
-  ctx.fillRect(0, startY, canvasWidth, statsHeight)
-
-  ctx.fillStyle = '#fff'
-  ctx.fillRect(12, startY + 12, canvasWidth - 24, headerHeight - 24)
-  ctx.strokeStyle = '#e6e9ed'
-  ctx.lineWidth = 1
-  ctx.strokeRect(12, startY + 12, canvasWidth - 24, headerHeight - 24)
-
-  ctx.fillStyle = '#333'
-  ctx.font = 'bold 16px "Microsoft YaHei", Arial, sans-serif'
-  ctx.textAlign = 'left'
-  ctx.fillText('拼豆数量统计', 24, startY + 38)
-
-  const totalCount = statsData.reduce((sum, stat) => sum + stat.count, 0)
-
-  ctx.fillStyle = '#666'
-  ctx.font = '14px "Microsoft YaHei", Arial, sans-serif'
-  ctx.fillText(`品牌: ${brand}`, 24, startY + 58)
-  ctx.fillText(`颜色数量: ${statsData.length} 种`, 24, startY + 78)
-  ctx.fillText(`总数量: ${totalCount} 颗`, 24, startY + 98)
-
-  const tableStartY = startY + headerHeight - 12
-  ctx.fillStyle = '#f8f9fa'
-  ctx.fillRect(12, tableStartY, canvasWidth - 24, 32)
-  ctx.strokeStyle = '#dee2e6'
-  ctx.lineWidth = 1
-  ctx.strokeRect(12, tableStartY, canvasWidth - 24, 32)
-
-  ctx.fillStyle = '#303133'
-  ctx.font = 'bold 14px "Microsoft YaHei", Arial, sans-serif'
-  ctx.textAlign = 'left'
-  ctx.fillText('颜色编号', 32, tableStartY + 22)
-  ctx.textAlign = 'right'
-  ctx.fillText('数量', canvasWidth - 32, tableStartY + 22)
-
-  const tableBodyStartY = tableStartY + 32
-  const tableHeight = Math.ceil(statsData.length / columns) * rowHeight
-  ctx.fillStyle = '#fff'
-  ctx.fillRect(12, tableBodyStartY, canvasWidth - 24, tableHeight)
-  ctx.strokeStyle = '#dee2e6'
-  ctx.strokeRect(12, tableBodyStartY, canvasWidth - 24, tableHeight)
-
-  statsData.forEach((stat, index) => {
-    const row = Math.floor(index / columns)
-    const col = index % columns
-    const columnWidth = (canvasWidth - 24) / columns
-    const x = 12 + col * columnWidth
-    const y = tableBodyStartY + row * rowHeight
-
-    if (row > 0 || col > 0) {
-      ctx.strokeStyle = '#dee2e6'
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.moveTo(x, y)
-      ctx.lineTo(x + columnWidth, y)
-      if (col === 0) {
-        ctx.moveTo(x, y)
-        ctx.lineTo(x, y + rowHeight)
-      }
-      ctx.stroke()
-    }
-
-    ctx.fillStyle = `rgb(${stat.color.r}, ${stat.color.g}, ${stat.color.b})`
-    ctx.fillRect(x + 8, y + 8, 24, 24)
-    ctx.strokeStyle = '#e4e7ed'
-    ctx.lineWidth = 1
-    ctx.strokeRect(x + 8, y + 8, 24, 24)
-
-    ctx.fillStyle = '#333'
-    ctx.font = '14px "Microsoft YaHei", Arial, sans-serif'
-    ctx.textAlign = 'left'
-    ctx.fillText(stat.code, x + 40, y + 22)
-
-    ctx.fillStyle = '#409EFF'
-    ctx.font = 'bold 12px "Microsoft YaHei", Arial, sans-serif'
-    ctx.textAlign = 'right'
-    ctx.fillText(`${stat.count} 颗`, x + columnWidth - 8, y + 22)
-  })
-
-  return statsHeight
-}
-
-const downloadExport = (): void => {
-  if (!patternGrid.value.length) {
-    ElMessage.warning('请先生成拼豆图纸')
-    return
-  }
-
-  const cellSize = showNumbers.value ? 20 : 10
-  const axisMargin = showNumbers.value ? 44 : 12
-  const gridCanvasWidth = gridWidth.value * cellSize + axisMargin * 2
-  const gridCanvasHeight = gridHeight.value * cellSize + axisMargin * 2
+  const axisMargin = 16
+  const borderOffset = 1
+  const effGridWidth = gridWidth.value + borderOffset * 2
+  const effGridHeight = gridHeight.value + borderOffset * 2
+  const gridCanvasWidth = effGridWidth * cellSize + axisMargin * 2
+  const gridCanvasHeight = effGridHeight * cellSize + axisMargin * 2
 
   const gridCanvas = document.createElement('canvas')
   gridCanvas.width = gridCanvasWidth
@@ -298,7 +173,169 @@ const downloadExport = (): void => {
     cellSize,
     axisMargin,
     showNumbers: showNumbers.value,
-    gridLineInterval: 5
+    gridLineInterval: 5,
+    showCoordinateBorder: true
+  })
+
+  const columns = 3
+  const rowHeight = 48
+  const headerHeight = 120
+  const statsHeight = Math.ceil(colorStats.value.length / columns) * rowHeight + headerHeight
+
+  const combinedCanvas = document.createElement('canvas')
+  combinedCanvas.width = gridCanvasWidth
+  combinedCanvas.height = gridCanvasHeight + statsHeight
+  const combinedCtx = combinedCanvas.getContext('2d')
+  if (!combinedCtx) return
+
+  combinedCtx.drawImage(gridCanvas, 0, 0)
+  drawStatsPanel(
+    combinedCtx,
+    combinedCanvas.width,
+    gridCanvasHeight,
+    colorStats.value,
+    selectedBrand.value
+  )
+
+  previewCanvas.value.width = combinedCanvas.width
+  previewCanvas.value.height = combinedCanvas.height
+  const ctx = previewCanvas.value.getContext('2d')
+  if (ctx) {
+    ctx.drawImage(combinedCanvas, 0, 0)
+  }
+}
+
+function drawStatsPanel(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  startY: number,
+  statsData: ColorStat[],
+  brand: string
+): number {
+  const sorted = [...statsData].sort((a, b) => b.count - a.count)
+  const totalCount = sorted.reduce((sum, stat) => sum + stat.count, 0)
+  const maxCount = sorted[0]?.count ?? 1
+
+  const pad = 16
+  const innerW = canvasWidth - pad * 2
+
+  const titleH = 36
+  const summaryH = 28
+  const headerH = titleH + summaryH
+
+  const columns = 2
+  const colW = (innerW - pad) / columns
+  const rowH = 32
+  const rows = Math.ceil(sorted.length / columns)
+  const tableH = rows * rowH
+
+  const totalH = pad + headerH + pad + tableH + pad
+
+  // Background
+  ctx.fillStyle = '#fafbfc'
+  ctx.fillRect(0, startY, canvasWidth, totalH)
+
+  // Title
+  ctx.fillStyle = '#1a1a2e'
+  ctx.font = 'bold 15px "Microsoft YaHei", Arial, sans-serif'
+  ctx.textAlign = 'left'
+  ctx.fillText('拼豆数量统计', pad, startY + pad + 22)
+
+  // Summary line
+  const summaryY = startY + pad + titleH + 6
+  ctx.fillStyle = '#555'
+  ctx.font = '12px "Microsoft YaHei", Arial, sans-serif'
+  const summaryParts = [`品牌: ${brand}`, `颜色: ${sorted.length} 种`, `总数: ${totalCount} 颗`]
+  let summaryX = pad
+  summaryParts.forEach((part) => {
+    ctx.fillText(part, summaryX, summaryY + 16)
+    summaryX += ctx.measureText(part).width + 20
+  })
+
+  // Separator
+  const sepY = startY + pad + headerH + pad
+  ctx.strokeStyle = '#e8ecf1'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(pad, sepY)
+  ctx.lineTo(canvasWidth - pad, sepY)
+  ctx.stroke()
+
+  // Color rows
+  const tableY = sepY
+  const barMaxW = colW - 86
+
+  sorted.forEach((stat, index) => {
+    const col = index % columns
+    const row = Math.floor(index / columns)
+    const x = pad + col * (colW + pad)
+    const y = tableY + row * rowH
+    const pct = ((stat.count / totalCount) * 100).toFixed(1)
+    const barW = (stat.count / maxCount) * barMaxW
+
+    // Swatch
+    ctx.fillStyle = `rgb(${stat.color.r}, ${stat.color.g}, ${stat.color.b})`
+    ctx.fillRect(x, y + 7, 16, 16)
+    ctx.strokeStyle = '#d5d8dd'
+    ctx.lineWidth = 1
+    ctx.strokeRect(x, y + 7, 16, 16)
+
+    // Code
+    ctx.fillStyle = '#222'
+    ctx.font = '11px "Consolas", "Courier New", monospace'
+    ctx.textAlign = 'left'
+    ctx.fillText(stat.code, x + 22, y + 17)
+
+    // Bar background
+    const barX = x + 72
+    const barY = y + 11
+    ctx.fillStyle = '#eef0f4'
+    ctx.fillRect(barX, barY, barMaxW, 10)
+
+    // Bar fill
+    if (barW > 0) {
+      ctx.fillStyle = `rgba(${stat.color.r}, ${stat.color.g}, ${stat.color.b}, 0.7)`
+      ctx.fillRect(barX, barY, barW, 10)
+    }
+
+    // Count
+    ctx.fillStyle = '#333'
+    ctx.font = 'bold 11px "Microsoft YaHei", Arial, sans-serif'
+    ctx.textAlign = 'right'
+    ctx.fillText(`${stat.count} 颗 (${pct}%)`, x + colW, y + 17)
+  })
+
+  return totalH
+}
+
+const downloadExport = (): void => {
+  if (!patternGrid.value.length) {
+    ElMessage.warning('请先生成拼豆图纸')
+    return
+  }
+
+  const cellSize = showNumbers.value ? 20 : 10
+  const axisMargin = 16
+  const borderOffset = 1
+  const effGridWidth = gridWidth.value + borderOffset * 2
+  const effGridHeight = gridHeight.value + borderOffset * 2
+  const gridCanvasWidth = effGridWidth * cellSize + axisMargin * 2
+  const gridCanvasHeight = effGridHeight * cellSize + axisMargin * 2
+
+  const gridCanvas = document.createElement('canvas')
+  gridCanvas.width = gridCanvasWidth
+  gridCanvas.height = gridCanvasHeight
+  const gridCtx = gridCanvas.getContext('2d')
+  if (!gridCtx) return
+
+  drawPatternToCanvas(gridCtx, gridCanvas, patternGrid.value, {
+    gridWidth: gridWidth.value,
+    gridHeight: gridHeight.value,
+    cellSize,
+    axisMargin,
+    showNumbers: showNumbers.value,
+    gridLineInterval: 5,
+    showCoordinateBorder: true
   })
 
   const columns = 3
@@ -432,9 +469,7 @@ defineExpose({
   max-height: 500px;
   overflow: auto;
   background: linear-gradient(135deg, #f0f2f5 0%, #e6e8eb 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  text-align: center;
   padding: 16px;
 }
 

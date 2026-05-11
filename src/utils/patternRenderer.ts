@@ -15,6 +15,7 @@ export interface RenderOptions {
   majorGridLineWidth: number
   minorGridLineWidth: number
   highlightedColorKeys?: Set<string>
+  showCoordinateBorder?: boolean
 }
 
 export const DEFAULT_RENDER_OPTIONS: RenderOptions = {
@@ -30,7 +31,8 @@ export const DEFAULT_RENDER_OPTIONS: RenderOptions = {
     minor: '#ddd'
   },
   majorGridLineWidth: 2,
-  minorGridLineWidth: 1
+  minorGridLineWidth: 1,
+  showCoordinateBorder: false
 }
 
 export function getContrastColor(r: number, g: number, b: number): string {
@@ -157,7 +159,7 @@ export function drawPatternToCanvas(
     cellSize,
     axisMargin,
     showNumbers,
-    gridLineInterval,
+    showCoordinateBorder,
     gridLineColor,
     majorGridLineWidth,
     minorGridLineWidth
@@ -165,17 +167,26 @@ export function drawPatternToCanvas(
 
   if (!patternGrid.length || !patternGrid[0]) return
 
-  const pw = gridWidth * cellSize + axisMargin * 2
-  const ph = gridHeight * cellSize + axisMargin * 2
+  const borderOffset = showCoordinateBorder ? 1 : 0
+  const effGridWidth = gridWidth + borderOffset * 2
+  const effGridHeight = gridHeight + borderOffset * 2
+
+  const pw = effGridWidth * cellSize + axisMargin * 2
+  const ph = effGridHeight * cellSize + axisMargin * 2
 
   ctx.clearRect(0, 0, pw, ph)
+
+  if (showCoordinateBorder) {
+    drawCoordinateBorderFill(ctx, gridWidth, gridHeight, cellSize, axisMargin)
+  }
 
   for (let y = 0; y < gridHeight; y++) {
     for (let x = 0; x < gridWidth; x++) {
       const cell = patternGrid[y]?.[x]
       if (!cell) continue
 
-      const { cellX, cellY } = calculateCellPosition(x, y, cellSize, axisMargin, gridLineInterval)
+      const cellX = axisMargin + (x + borderOffset) * cellSize
+      const cellY = axisMargin + (y + borderOffset) * cellSize
 
       const highlightActive = opts.highlightedColorKeys && opts.highlightedColorKeys.size > 0
       const cellKey = highlightActive ? `${cell.color.r},${cell.color.g},${cell.color.b}` : ''
@@ -216,54 +227,90 @@ export function drawPatternToCanvas(
     }
   }
   const offset = axisMargin
+  const lineStartX = axisMargin
+  const lineStartY = axisMargin
+  const lineEndX = axisMargin + effGridWidth * cellSize
+  const lineEndY = axisMargin + effGridHeight * cellSize
 
-  // 画所有的细线
-  ctx.beginPath()
-  ctx.strokeStyle = gridLineColor.minor
-  ctx.lineWidth = minorGridLineWidth
-
-  // 画垂直方向的细线
-  for (let i = 0; i <= gridWidth; i++) {
-    if (i % 5 !== 0) {
-      // 不是 5 的倍数才画细线
-      ctx.moveTo(i * cellSize + offset, 0)
-      ctx.lineTo(i * cellSize + offset, ph)
+  if (showCoordinateBorder) {
+    // 所有网格线（含坐标边框）统一用细线
+    ctx.beginPath()
+    ctx.strokeStyle = gridLineColor.minor
+    ctx.lineWidth = minorGridLineWidth
+    for (let i = 0; i <= effGridWidth; i++) {
+      ctx.moveTo(i * cellSize + offset, lineStartY)
+      ctx.lineTo(i * cellSize + offset, lineEndY)
     }
-  }
-  // 画水平方向的细线
-  for (let j = 0; j <= gridHeight; j++) {
-    if (j % 5 !== 0) {
-      // 不是 5 的倍数才画细线
-      ctx.moveTo(0, j * cellSize + offset)
-      ctx.lineTo(pw, j * cellSize + offset)
+    for (let j = 0; j <= effGridHeight; j++) {
+      ctx.moveTo(lineStartX, j * cellSize + offset)
+      ctx.lineTo(lineEndX, j * cellSize + offset)
     }
-  }
-  ctx.stroke()
+    ctx.stroke()
 
-  // 画所有的粗线
-  ctx.beginPath()
-  ctx.strokeStyle = gridLineColor.major
-  ctx.lineWidth = majorGridLineWidth
-
-  // 画垂直方向的粗线
-  for (let i = 0; i <= gridWidth; i++) {
-    if (i % 5 === 0) {
-      // 是 5 的倍数，画粗线
-      ctx.moveTo(i * cellSize + offset, 0)
-      ctx.lineTo(i * cellSize + offset, ph)
+    // 仅拼豆图纸内部按每5格画粗线（排除坐标边框格子）
+    ctx.beginPath()
+    ctx.strokeStyle = gridLineColor.major
+    ctx.lineWidth = majorGridLineWidth
+    for (let i = 1; i <= gridWidth + 1; i++) {
+      if ((i - 1) % 5 === 0) {
+        ctx.moveTo(i * cellSize + offset, lineStartY)
+        ctx.lineTo(i * cellSize + offset, lineEndY)
+      }
     }
-  }
-  // 画水平方向的粗线
-  for (let j = 0; j <= gridHeight; j++) {
-    if (j % 5 === 0) {
-      // 是 5 的倍数，画粗线
-      ctx.moveTo(0, j * cellSize + offset)
-      ctx.lineTo(pw, j * cellSize + offset)
+    for (let j = 1; j <= gridHeight + 1; j++) {
+      if ((j - 1) % 5 === 0) {
+        ctx.moveTo(lineStartX, j * cellSize + offset)
+        ctx.lineTo(lineEndX, j * cellSize + offset)
+      }
     }
-  }
-  ctx.stroke() // 一次性画出所有粗线
+    ctx.stroke()
+  } else {
+    // 画所有的细线
+    ctx.beginPath()
+    ctx.strokeStyle = gridLineColor.minor
+    ctx.lineWidth = minorGridLineWidth
 
-  if (showNumbers) {
+    // 画垂直方向的细线
+    for (let i = 0; i <= effGridWidth; i++) {
+      if (i % 5 !== 0) {
+        ctx.moveTo(i * cellSize + offset, lineStartY)
+        ctx.lineTo(i * cellSize + offset, lineEndY)
+      }
+    }
+    // 画水平方向的细线
+    for (let j = 0; j <= effGridHeight; j++) {
+      if (j % 5 !== 0) {
+        ctx.moveTo(lineStartX, j * cellSize + offset)
+        ctx.lineTo(lineEndX, j * cellSize + offset)
+      }
+    }
+    ctx.stroke()
+
+    // 画所有的粗线
+    ctx.beginPath()
+    ctx.strokeStyle = gridLineColor.major
+    ctx.lineWidth = majorGridLineWidth
+
+    // 画垂直方向的粗线
+    for (let i = 0; i <= effGridWidth; i++) {
+      if (i % 5 === 0) {
+        ctx.moveTo(i * cellSize + offset, lineStartY)
+        ctx.lineTo(i * cellSize + offset, lineEndY)
+      }
+    }
+    // 画水平方向的粗线
+    for (let j = 0; j <= effGridHeight; j++) {
+      if (j % 5 === 0) {
+        ctx.moveTo(lineStartX, j * cellSize + offset)
+        ctx.lineTo(lineEndX, j * cellSize + offset)
+      }
+    }
+    ctx.stroke()
+  }
+
+  if (showCoordinateBorder) {
+    drawCoordinateBorderLabels(ctx, gridWidth, gridHeight, cellSize, axisMargin)
+  } else if (showNumbers) {
     drawAxisLabels(ctx, pw, ph, gridWidth, gridHeight, cellSize, axisMargin)
   }
 }
@@ -325,6 +372,72 @@ function drawAxisLabels(
       ctx.textAlign = 'left'
       ctx.fillText(label, rightX, y)
     }
+  }
+
+  ctx.restore()
+}
+
+function drawCoordinateBorderFill(
+  ctx: CanvasRenderingContext2D,
+  gridWidth: number,
+  gridHeight: number,
+  cellSize: number,
+  axisMargin: number
+): void {
+  ctx.fillStyle = '#f0f0f0'
+
+  for (let c = 0; c <= gridWidth + 1; c++) {
+    ctx.fillRect(axisMargin + c * cellSize, axisMargin, cellSize, cellSize)
+    ctx.fillRect(
+      axisMargin + c * cellSize,
+      axisMargin + (gridHeight + 1) * cellSize,
+      cellSize,
+      cellSize
+    )
+  }
+
+  for (let r = 1; r <= gridHeight; r++) {
+    ctx.fillRect(axisMargin, axisMargin + r * cellSize, cellSize, cellSize)
+    ctx.fillRect(
+      axisMargin + (gridWidth + 1) * cellSize,
+      axisMargin + r * cellSize,
+      cellSize,
+      cellSize
+    )
+  }
+}
+
+function drawCoordinateBorderLabels(
+  ctx: CanvasRenderingContext2D,
+  gridWidth: number,
+  gridHeight: number,
+  cellSize: number,
+  axisMargin: number
+): void {
+  ctx.save()
+
+  const fontSize = Math.max(Math.min(cellSize * 0.45, 12), 7)
+  ctx.fillStyle = '#555'
+  ctx.font = `bold ${fontSize}px Arial`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+
+  for (let c = 1; c <= gridWidth; c++) {
+    const label = `${c}`
+    const x = axisMargin + c * cellSize + cellSize / 2
+    const topY = axisMargin + cellSize / 2
+    const bottomY = axisMargin + (gridHeight + 1) * cellSize + cellSize / 2
+    ctx.fillText(label, x, topY)
+    ctx.fillText(label, x, bottomY)
+  }
+
+  for (let r = 1; r <= gridHeight; r++) {
+    const label = `${r}`
+    const y = axisMargin + r * cellSize + cellSize / 2
+    const leftX = axisMargin + cellSize / 2
+    const rightX = axisMargin + (gridWidth + 1) * cellSize + cellSize / 2
+    ctx.fillText(label, leftX, y)
+    ctx.fillText(label, rightX, y)
   }
 
   ctx.restore()

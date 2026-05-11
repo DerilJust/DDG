@@ -14,11 +14,11 @@
       class="import-textarea"
     />
     <div class="import-actions">
-      <el-button type="primary" @click="handleImport" :disabled="!inputText.trim()">
+      <el-button type="primary" :disabled="!inputText.trim()" @click="handleImport">
         <el-icon><Upload /></el-icon>
         导入
       </el-button>
-      <el-button @click="inputText = ''" :disabled="!inputText">清空</el-button>
+      <el-button :disabled="!inputText" @click="inputText = ''">清空</el-button>
     </div>
     <el-alert
       v-if="statusMessage"
