@@ -4,16 +4,15 @@
       <div class="header-content">
         <h1 class="title">拼豆图纸生成器</h1>
         <nav class="nav-tabs">
-          <el-button
+          <button
             v-for="item in navItems"
             :key="item.path"
-            :type="isActive(item.path) ? 'primary' : 'default'"
-            size="default"
+            :class="['nav-tab', { active: isActive(item.path) }]"
             @click="navigateTo(item.path)"
           >
             <el-icon><component :is="item.icon" /></el-icon>
             {{ item.label }}
-          </el-button>
+          </button>
         </nav>
       </div>
     </el-header>
@@ -31,7 +30,7 @@
 
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router'
-import { HomeFilled, Edit, Aim } from '@element-plus/icons-vue'
+import { HomeFilled, Edit, Aim, QuestionFilled } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -39,7 +38,8 @@ const route = useRoute()
 const navItems = [
   { path: '/', label: '首页', icon: HomeFilled },
   { path: '/editor', label: '编辑器', icon: Edit },
-  { path: '/focus', label: '专注拼豆', icon: Aim }
+  { path: '/focus', label: '专注拼豆', icon: Aim },
+  { path: '/help', label: '帮助', icon: QuestionFilled }
 ]
 
 const isActive = (path: string): boolean => route.path === path
@@ -123,15 +123,52 @@ h1.title {
 
 .nav-tabs {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   margin-left: auto;
 }
 
-.nav-tabs .el-button {
+.nav-tab {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #606266;
+  font-size: 14px;
   font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition:
+    color 0.2s,
+    background 0.2s;
+  font-family: inherit;
+  line-height: 1;
+}
+
+.nav-tab:hover {
+  color: #303133;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.nav-tab.active {
+  color: #409eff;
+  font-weight: 600;
+}
+
+.nav-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  background: #409eff;
+  border-radius: 1px;
+  transition:
+    left 0.2s,
+    right 0.2s;
 }
 
 /* Page transition */

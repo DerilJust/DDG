@@ -83,6 +83,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '../store/appStore'
+import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
 import { buildBrandPalette } from '../utils/patternUtils'
 import UploadSection from '../components/UploadSection.vue'
 import Controls from '../components/Controls.vue'
@@ -92,6 +93,7 @@ import PatternInfo from '../components/PatternInfo.vue'
 
 import ExportPreview from '../components/ExportPreview.vue'
 import { Expand, Fold, Grid, Download } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 const appStore = useAppStore()
 const {
@@ -113,6 +115,18 @@ const activeTab = ref('pattern')
 
 onMounted(() => {
   appStore.loadColorData()
+  appStore.loadShortcutConfig()
+})
+
+useKeyboardShortcuts(() => appStore.activeShortcutConfig, {
+  toggleEditMode: () => appStore.setEditMode(!editMode.value),
+  setTool: (tool) => appStore.setSelectedTool(tool as typeof selectedTool.value),
+  undo: () => {
+    if (undoStack.value.length > 0) appStore.undo()
+  },
+  redo: () => {
+    if (redoStack.value.length > 0) appStore.redo()
+  }
 })
 
 const toggleSidebar = (): void => {
@@ -127,7 +141,7 @@ const generatePattern = (): void => {
 const downloadPattern = (): void => {
   const canvas = previewSection.value?.getFullResCanvas?.()
   if (!canvas) {
-    alert('请先生成拼豆图纸')
+    ElMessage.warning('请先生成拼豆图纸')
     return
   }
 

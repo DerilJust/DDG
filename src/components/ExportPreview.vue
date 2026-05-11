@@ -153,7 +153,8 @@ const colorCount = computed(() => colorStats.value.length)
 const generatePreview = (): void => {
   if (!previewCanvas.value || !patternGrid.value.length) return
 
-  const cellSize = showNumbers.value ? 20 : 10
+  const scale = appStore.exportScale
+  const cellSize = (showNumbers.value ? 20 : 10) * scale
   const axisMargin = 16
   const borderOffset = 1
   const effGridWidth = gridWidth.value + borderOffset * 2
@@ -177,10 +178,7 @@ const generatePreview = (): void => {
     showCoordinateBorder: true
   })
 
-  const columns = 3
-  const rowHeight = 48
-  const headerHeight = 120
-  const statsHeight = Math.ceil(colorStats.value.length / columns) * rowHeight + headerHeight
+  const statsHeight = calcStatsHeight(gridCanvasWidth, colorStats.value, scale)
 
   const combinedCanvas = document.createElement('canvas')
   combinedCanvas.width = gridCanvasWidth
@@ -194,7 +192,8 @@ const generatePreview = (): void => {
     combinedCanvas.width,
     gridCanvasHeight,
     colorStats.value,
-    selectedBrand.value
+    selectedBrand.value,
+    scale
   )
 
   previewCanvas.value.width = combinedCanvas.width
@@ -205,27 +204,51 @@ const generatePreview = (): void => {
   }
 }
 
+function calcStatsHeight(canvasWidth: number, statsData: ColorStat[], scale: number): number {
+  const pad = 16 * scale
+  const innerW = canvasWidth - pad * 2
+  const headerH = 36 * scale + 28 * scale
+  const swatchSize = 16 * scale
+
+  const measureCtx = document.createElement('canvas').getContext('2d')!
+  measureCtx.font = `${11 * scale}px "Consolas", "Courier New", monospace`
+  const maxCodeW = statsData.reduce((w, s) => Math.max(w, measureCtx.measureText(s.code).width), 0)
+  measureCtx.font = `bold ${11 * scale}px "Microsoft YaHei", Arial, sans-serif`
+  const maxCountW = measureCtx.measureText('888 颗').width
+  const itemW = swatchSize + 6 * scale + maxCodeW + 24 * scale + maxCountW + 16 * scale
+  const columns = Math.max(1, Math.floor(innerW / itemW))
+  const rowH = 32 * scale
+  const rows = Math.ceil(statsData.length / columns)
+  return pad + headerH + pad + rows * rowH + pad
+}
+
 function drawStatsPanel(
   ctx: CanvasRenderingContext2D,
   canvasWidth: number,
   startY: number,
   statsData: ColorStat[],
-  brand: string
+  brand: string,
+  scale: number
 ): number {
-  const sorted = [...statsData].sort((a, b) => b.count - a.count)
+  const sorted = [...statsData].sort((a, b) => a.code.localeCompare(b.code))
   const totalCount = sorted.reduce((sum, stat) => sum + stat.count, 0)
-  const maxCount = sorted[0]?.count ?? 1
 
-  const pad = 16
+  const pad = 16 * scale
   const innerW = canvasWidth - pad * 2
 
-  const titleH = 36
-  const summaryH = 28
+  const titleH = 36 * scale
+  const summaryH = 28 * scale
   const headerH = titleH + summaryH
 
-  const columns = 2
-  const colW = (innerW - pad) / columns
-  const rowH = 32
+  const swatchSize = 16 * scale
+  ctx.font = `${11 * scale}px "Consolas", "Courier New", monospace`
+  const maxCodeW = sorted.reduce((w, s) => Math.max(w, ctx.measureText(s.code).width), 0)
+  ctx.font = `bold ${11 * scale}px "Microsoft YaHei", Arial, sans-serif`
+  const maxCountW = ctx.measureText('888 颗').width
+  const itemW = swatchSize + 6 * scale + maxCodeW + 24 * scale + maxCountW + 16 * scale
+  const columns = Math.max(1, Math.floor(innerW / itemW))
+  const colW = columns > 1 ? (innerW - pad * (columns - 1)) / columns : innerW
+  const rowH = 32 * scale
   const rows = Math.ceil(sorted.length / columns)
   const tableH = rows * rowH
 
@@ -237,19 +260,19 @@ function drawStatsPanel(
 
   // Title
   ctx.fillStyle = '#1a1a2e'
-  ctx.font = 'bold 15px "Microsoft YaHei", Arial, sans-serif'
+  ctx.font = `bold ${15 * scale}px "Microsoft YaHei", Arial, sans-serif`
   ctx.textAlign = 'left'
-  ctx.fillText('拼豆数量统计', pad, startY + pad + 22)
+  ctx.fillText('拼豆数量统计', pad, startY + pad + 22 * scale)
 
   // Summary line
-  const summaryY = startY + pad + titleH + 6
+  const summaryY = startY + pad + titleH + 6 * scale
   ctx.fillStyle = '#555'
-  ctx.font = '12px "Microsoft YaHei", Arial, sans-serif'
+  ctx.font = `${12 * scale}px "Microsoft YaHei", Arial, sans-serif`
   const summaryParts = [`品牌: ${brand}`, `颜色: ${sorted.length} 种`, `总数: ${totalCount} 颗`]
   let summaryX = pad
   summaryParts.forEach((part) => {
-    ctx.fillText(part, summaryX, summaryY + 16)
-    summaryX += ctx.measureText(part).width + 20
+    ctx.fillText(part, summaryX, summaryY + 16 * scale)
+    summaryX += ctx.measureText(part).width + 20 * scale
   })
 
   // Separator
@@ -263,46 +286,31 @@ function drawStatsPanel(
 
   // Color rows
   const tableY = sepY
-  const barMaxW = colW - 86
 
   sorted.forEach((stat, index) => {
     const col = index % columns
     const row = Math.floor(index / columns)
     const x = pad + col * (colW + pad)
     const y = tableY + row * rowH
-    const pct = ((stat.count / totalCount) * 100).toFixed(1)
-    const barW = (stat.count / maxCount) * barMaxW
 
     // Swatch
     ctx.fillStyle = `rgb(${stat.color.r}, ${stat.color.g}, ${stat.color.b})`
-    ctx.fillRect(x, y + 7, 16, 16)
+    ctx.fillRect(x, y + 7 * scale, swatchSize, swatchSize)
     ctx.strokeStyle = '#d5d8dd'
     ctx.lineWidth = 1
-    ctx.strokeRect(x, y + 7, 16, 16)
+    ctx.strokeRect(x, y + 7 * scale, swatchSize, swatchSize)
 
     // Code
     ctx.fillStyle = '#222'
-    ctx.font = '11px "Consolas", "Courier New", monospace'
+    ctx.font = `${11 * scale}px "Consolas", "Courier New", monospace`
     ctx.textAlign = 'left'
-    ctx.fillText(stat.code, x + 22, y + 17)
-
-    // Bar background
-    const barX = x + 72
-    const barY = y + 11
-    ctx.fillStyle = '#eef0f4'
-    ctx.fillRect(barX, barY, barMaxW, 10)
-
-    // Bar fill
-    if (barW > 0) {
-      ctx.fillStyle = `rgba(${stat.color.r}, ${stat.color.g}, ${stat.color.b}, 0.7)`
-      ctx.fillRect(barX, barY, barW, 10)
-    }
+    ctx.fillText(stat.code, x + swatchSize + 6 * scale, y + 17 * scale)
 
     // Count
     ctx.fillStyle = '#333'
-    ctx.font = 'bold 11px "Microsoft YaHei", Arial, sans-serif'
+    ctx.font = `bold ${11 * scale}px "Microsoft YaHei", Arial, sans-serif`
     ctx.textAlign = 'right'
-    ctx.fillText(`${stat.count} 颗 (${pct}%)`, x + colW, y + 17)
+    ctx.fillText(`${stat.count} 颗`, x + colW, y + 17 * scale)
   })
 
   return totalH
@@ -314,7 +322,8 @@ const downloadExport = (): void => {
     return
   }
 
-  const cellSize = showNumbers.value ? 20 : 10
+  const scale = appStore.exportScale
+  const cellSize = (showNumbers.value ? 20 : 10) * scale
   const axisMargin = 16
   const borderOffset = 1
   const effGridWidth = gridWidth.value + borderOffset * 2
@@ -338,10 +347,7 @@ const downloadExport = (): void => {
     showCoordinateBorder: true
   })
 
-  const columns = 3
-  const rowHeight = 48
-  const headerHeight = 120
-  const statsHeight = Math.ceil(colorStats.value.length / columns) * rowHeight + headerHeight
+  const statsHeight = calcStatsHeight(gridCanvasWidth, colorStats.value, scale)
 
   const finalCanvas = document.createElement('canvas')
   const finalCtx = finalCanvas.getContext('2d')
@@ -357,7 +363,8 @@ const downloadExport = (): void => {
     finalCanvas.width,
     gridCanvasHeight,
     colorStats.value,
-    selectedBrand.value
+    selectedBrand.value,
+    scale
   )
 
   const link = document.createElement('a')

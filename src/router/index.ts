@@ -17,6 +17,11 @@ const router = createRouter({
       path: '/focus',
       name: 'focus',
       component: () => import('../pages/FocusBeadPage.vue')
+    },
+    {
+      path: '/help',
+      name: 'help',
+      component: () => import('../pages/HelpPage.vue')
     }
   ]
 })

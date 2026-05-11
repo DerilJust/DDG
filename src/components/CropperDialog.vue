@@ -57,6 +57,7 @@
 import { ref, watch, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import type { PropType } from 'vue'
 import type { CropperImageData, CroppedResult } from '../types'
+import { ElMessage } from 'element-plus'
 
 const props = defineProps({
   visible: {
@@ -411,7 +412,7 @@ const applyCrop = async () => {
     initCropRect()
   } catch (error) {
     console.error('应用裁剪失败：', error)
-    alert('应用裁剪失败，请重试')
+    ElMessage.error('应用裁剪失败，请重试')
   }
 }
 
@@ -435,7 +436,7 @@ const uploadCroppedImage = async () => {
     dialogVisible.value = false
   } catch (error) {
     console.error('上传裁剪图片失败：', error)
-    alert('上传裁剪图片失败，请重试')
+    ElMessage.error('上传裁剪图片失败，请重试')
   }
 }
 </script>

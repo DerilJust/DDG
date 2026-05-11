@@ -447,15 +447,23 @@ export function drawPreviewOverlay(
   ctx: CanvasRenderingContext2D,
   overlay: PreviewOverlay,
   cellSize: number,
-  axisMargin: number
+  axisMargin: number,
+  showCoordinateBorder = false
 ): void {
   if (!overlay.cells.length) return
+
+  const borderOffset = showCoordinateBorder ? 1 : 0
 
   ctx.save()
 
   ctx.fillStyle = overlay.fillColor
   overlay.cells.forEach(({ x, y }) => {
-    ctx.fillRect(axisMargin + x * cellSize, axisMargin + y * cellSize, cellSize, cellSize)
+    ctx.fillRect(
+      axisMargin + (x + borderOffset) * cellSize,
+      axisMargin + (y + borderOffset) * cellSize,
+      cellSize,
+      cellSize
+    )
   })
 
   if (overlay.bounds) {
@@ -463,8 +471,8 @@ export function drawPreviewOverlay(
     ctx.strokeStyle = overlay.strokeColor
     ctx.lineWidth = 2
     ctx.strokeRect(
-      axisMargin + x1 * cellSize,
-      axisMargin + y1 * cellSize,
+      axisMargin + (x1 + borderOffset) * cellSize,
+      axisMargin + (y1 + borderOffset) * cellSize,
       (x2 - x1 + 1) * cellSize,
       (y2 - y1 + 1) * cellSize
     )
