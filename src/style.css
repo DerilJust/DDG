@@ -27,6 +27,29 @@
   @media (max-width: 1024px) {
     font-size: 16px;
   }
+
+  --header-height: 60px;
+  --sidebar-width: 300px;
+  --footer-height: 180px;
+  --content-padding: 24px;
+}
+
+/* Responsive layout variables */
+@media (max-width: 1023px) {
+  :root {
+    --sidebar-width: 240px;
+    --footer-height: 150px;
+    --content-padding: 16px;
+  }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --header-height: 48px;
+    --sidebar-width: 0px;
+    --footer-height: auto;
+    --content-padding: 12px;
+  }
 }
 
 @font-face {
@@ -147,11 +170,10 @@ code {
 }
 
 #app {
-  width: 1126px;
+  width: 100%;
   max-width: 100%;
   margin: 0 auto;
   text-align: center;
-  border-inline: 1px solid var(--border);
   min-height: 100svh;
   display: flex;
   flex-direction: column;

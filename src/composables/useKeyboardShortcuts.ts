@@ -51,7 +51,7 @@ function parseKeyCombination(key: string): {
 
 function matchesShortcut(e: KeyboardEvent, shortcut: string): boolean {
   const parsed = parseKeyCombination(shortcut)
-  if (e.key !== parsed.key) return false
+  if (e.key.toLowerCase() !== parsed.key.toLowerCase()) return false
   if (e.ctrlKey !== parsed.ctrl) return false
   if (e.shiftKey !== parsed.shift) return false
   if (e.altKey !== parsed.alt) return false

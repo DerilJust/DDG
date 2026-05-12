@@ -30,26 +30,28 @@
           <span>拼豆数量统计</span>
         </div>
       </template>
-      <el-table :data="colorStats" style="width: 100%" stripe class="stats-table">
-        <el-table-column prop="code" label="颜色编号" width="120">
-          <template #default="scope">
-            <div class="stat-item">
-              <div
-                class="stat-color"
-                :style="{
-                  backgroundColor: `rgb(${scope.row.color.r}, ${scope.row.color.g}, ${scope.row.color.b})`
-                }"
-              ></div>
-              <span>{{ scope.row.code }}</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="count" label="数量">
-          <template #default="scope">
-            <el-tag type="info" size="small" class="count-tag"> {{ scope.row.count }} 颗 </el-tag>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-scroll-wrap">
+        <el-table :data="colorStats" style="width: 100%" stripe class="stats-table">
+          <el-table-column prop="code" label="颜色编号" width="120">
+            <template #default="scope">
+              <div class="stat-item">
+                <div
+                  class="stat-color"
+                  :style="{
+                    backgroundColor: `rgb(${scope.row.color.r}, ${scope.row.color.g}, ${scope.row.color.b})`
+                  }"
+                ></div>
+                <span>{{ scope.row.code }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="count" label="数量">
+            <template #default="scope">
+              <el-tag type="info" size="small" class="count-tag"> {{ scope.row.count }} 颗 </el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
     </el-card>
   </div>
 </template>
@@ -156,5 +158,10 @@ const { infoText, colorStats } = storeToRefs(appStore)
 
 :deep(.el-table--striped .el-table__row--striped) {
   background-color: #f9fafb;
+}
+
+.table-scroll-wrap {
+  width: 100%;
+  overflow-x: auto;
 }
 </style>

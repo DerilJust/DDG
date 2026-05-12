@@ -999,4 +999,35 @@ const handleConfirm = async () => {
   color: #606266;
   font-weight: 500;
 }
+
+/* Responsive */
+@media (max-width: 767px) {
+  .upload-dialog-body {
+    flex-direction: column;
+    min-height: auto;
+  }
+
+  .dialog-left-panel {
+    width: 100%;
+  }
+
+  .cropper-wrapper {
+    height: clamp(220px, 40vh, 400px);
+  }
+
+  .upload-placeholder {
+    min-height: 200px;
+  }
+
+  .preset-ratio-section {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .dialog-left-panel {
+    width: 240px;
+  }
+}
 </style>

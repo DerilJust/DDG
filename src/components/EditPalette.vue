@@ -51,9 +51,19 @@
       <el-button size="small" :icon="RefreshRight" :disabled="!canRedo" @click="redo"
         >重做</el-button
       >
+
+      <el-button
+        v-if="collapsed !== undefined"
+        size="small"
+        :icon="collapsed ? ArrowUp : ArrowDown"
+        class="collapse-palette-btn"
+        @click="$emit('toggleCollapse')"
+      >
+        {{ collapsed ? '展开调色板' : '收起调色板' }}
+      </el-button>
     </div>
 
-    <div class="editor-row editor-color-row">
+    <div v-show="collapsed === undefined || !collapsed" class="editor-row editor-color-row">
       <div class="current-color">
         <div class="color-swatch" :style="{ backgroundColor: activeColorHex || '#fff' }"></div>
         <span class="color-label">{{ activeColorHex || '未选择' }}</span>
@@ -125,7 +135,9 @@ import {
   Aim,
   Pointer,
   RefreshLeft,
-  RefreshRight
+  RefreshRight,
+  ArrowUp,
+  ArrowDown
 } from '@element-plus/icons-vue'
 import type { PropType } from 'vue'
 import type { PerlerColor, PaletteItem, ColorInfo } from '../utils/patternUtils'
@@ -182,6 +194,10 @@ const props = defineProps({
   canRedo: {
     type: Boolean,
     default: false
+  },
+  collapsed: {
+    type: Boolean,
+    default: undefined
   }
 })
 const emit = defineEmits([
@@ -190,7 +206,8 @@ const emit = defineEmits([
   'update:editMode',
   'update:selectedTool',
   'undo',
-  'redo'
+  'redo',
+  'toggleCollapse'
 ])
 
 const activeColorHex = computed<string>(() => props.activeColor?.hex || '')
@@ -440,5 +457,26 @@ const redo = (): void => {
   flex-shrink: 0;
   align-self: flex-end;
   margin-bottom: 3px;
+}
+
+.collapse-palette-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Responsive */
+@media (max-width: 767px) {
+  .editor-tool-row {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .tool-group .el-button {
+    padding: 5px 8px;
+  }
+
+  .tool-sep {
+    display: none;
+  }
 }
 </style>

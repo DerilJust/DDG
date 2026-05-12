@@ -1,148 +1,168 @@
 <template>
   <div class="help-page">
-    <aside class="help-sidebar">
-      <div class="sidebar-header">帮助文档</div>
-      <nav class="sidebar-nav">
+    <el-container>
+      <!-- Desktop/Tablet: sidebar -->
+      <el-aside v-if="!isMobile" :width="isTablet ? '160px' : '200px'" class="help-sidebar">
+        <div class="sidebar-header">帮助文档</div>
+        <nav class="sidebar-nav">
+          <a
+            v-for="section in sections"
+            :key="section.id"
+            :class="['sidebar-link', { active: activeSection === section.id }]"
+            :href="`#${section.id}`"
+            @click.prevent="scrollTo(section.id)"
+          >
+            <el-icon><component :is="section.icon" /></el-icon>
+            {{ section.title }}
+          </a>
+        </nav>
+      </el-aside>
+
+      <!-- Mobile: top horizontal nav -->
+      <nav v-if="isMobile" class="top-nav">
         <a
           v-for="section in sections"
           :key="section.id"
-          :class="['sidebar-link', { active: activeSection === section.id }]"
+          :class="['top-nav-link', { active: activeSection === section.id }]"
           :href="`#${section.id}`"
           @click.prevent="scrollTo(section.id)"
         >
-          <el-icon><component :is="section.icon" /></el-icon>
           {{ section.title }}
         </a>
       </nav>
-    </aside>
 
-    <main class="help-content">
-      <!-- 快速开始 -->
-      <section id="quick-start" class="doc-section">
-        <h2 class="section-title"><span class="title-number">1</span>快速开始</h2>
-        <div class="steps-grid">
-          <div v-for="(s, i) in quickSteps" :key="i" :class="['step-card', `step-card--${i + 1}`]">
-            <div class="step-num">{{ i + 1 }}</div>
-            <div class="step-connector"></div>
-            <div class="step-body">
-              <h4>
-                <el-icon :size="16"><component :is="s.icon" /></el-icon>{{ s.title }}
-              </h4>
-              <p>{{ s.desc }}</p>
+      <el-main class="help-content" :class="{ 'is-mobile': isMobile }">
+        <!-- 快速开始 -->
+        <section id="quick-start" class="doc-section">
+          <h2 class="section-title"><span class="title-number">1</span>快速开始</h2>
+          <div class="steps-grid">
+            <div
+              v-for="(s, i) in quickSteps"
+              :key="i"
+              :class="['step-card', `step-card--${i + 1}`]"
+            >
+              <div class="step-num">{{ i + 1 }}</div>
+              <div class="step-connector"></div>
+              <div class="step-body">
+                <h4>
+                  <el-icon :size="16"><component :is="s.icon" /></el-icon>{{ s.title }}
+                </h4>
+                <p>{{ s.desc }}</p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- 编辑器使用 -->
-      <section id="editor" class="doc-section">
-        <h2 class="section-title"><span class="title-number">2</span>编辑器使用</h2>
-        <div class="info-card">
-          <h4>编辑模式</h4>
-          <p>点击底部工具栏的<strong>编辑</strong>开关进入编辑模式，使用各种工具修改图纸。</p>
-        </div>
-        <div class="tools-row">
-          <div v-for="tool in editorTools" :key="tool.name" class="tool-chip">
-            <el-icon :size="18"><component :is="tool.icon" /></el-icon>
-            <span class="tool-name">{{ tool.name }}</span>
-            <span class="tool-desc">{{ tool.desc }}</span>
-          </div>
-        </div>
-        <div class="info-grid">
+        <!-- 编辑器使用 -->
+        <section id="editor" class="doc-section">
+          <h2 class="section-title"><span class="title-number">2</span>编辑器使用</h2>
           <div class="info-card">
-            <h4>撤销 / 重做</h4>
-            <p>支持最多 <strong>50 步</strong>撤销历史，可使用快捷键操作。</p>
+            <h4>编辑模式</h4>
+            <p>点击底部工具栏的<strong>编辑</strong>开关进入编辑模式，使用各种工具修改图纸。</p>
           </div>
-          <div class="info-card">
-            <h4>边缘扩展</h4>
-            <p>拖拽图纸四边的蓝色手柄可在任意方向扩展图纸，新增格子为空白。</p>
+          <div class="info-grid">
+            <div v-for="tool in editorTools" :key="tool.name" class="info-card tool-chip">
+              <el-icon :size="18"><component :is="tool.icon" /></el-icon>
+              <span class="tool-name">{{ tool.name }}</span>
+              <span class="tool-desc">{{ tool.desc }}</span>
+            </div>
           </div>
-          <div class="info-card">
-            <h4>全部填充</h4>
-            <p>选择颜色后点击"全部填充"可将整个图纸填充为该颜色。</p>
+          <div class="info-grid">
+            <div class="info-card">
+              <h4>撤销 / 重做</h4>
+              <p>支持最多 <strong>50 步</strong>撤销历史，可使用快捷键操作。</p>
+            </div>
+            <div class="info-card">
+              <h4>边缘扩展</h4>
+              <p>拖拽图纸四边的蓝色手柄可在任意方向扩展图纸，新增格子为空白。</p>
+            </div>
+            <div class="info-card">
+              <h4>全部填充</h4>
+              <p>选择颜色后点击"全部填充"可将整个图纸填充为该颜色。</p>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- 参数说明 -->
-      <section id="params" class="doc-section">
-        <h2 class="section-title"><span class="title-number">3</span>参数说明</h2>
-        <div class="param-table">
-          <div v-for="p in paramsList" :key="p.name" class="param-row">
-            <div class="param-name">{{ p.name }}</div>
-            <div class="param-desc">{{ p.desc }}</div>
+        <!-- 参数说明 -->
+        <section id="params" class="doc-section">
+          <h2 class="section-title"><span class="title-number">3</span>参数说明</h2>
+          <div class="param-table">
+            <div v-for="p in paramsList" :key="p.name" class="param-row">
+              <div class="param-name">{{ p.name }}</div>
+              <div class="param-desc">{{ p.desc }}</div>
+            </div>
           </div>
+        </section>
+
+        <!-- 快捷键参考 -->
+        <section id="shortcuts" class="doc-section">
+          <h2 class="section-title"><span class="title-number">4</span>快捷键参考</h2>
+          <div class="preset-group shortcut-table-wrap">
+            <table class="shortcut-table">
+              <thead>
+                <tr>
+                  <th>功能</th>
+                  <th>默认预设</th>
+                  <th>类PS风格</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in combinedShortcutRows" :key="row.label">
+                  <td class="fn-col">{{ row.label }}</td>
+                  <td class="key-col">
+                    <span v-for="key in row.defaultKeys" :key="key" class="keycap">{{ key }}</span>
+                  </td>
+                  <td class="key-col">
+                    <span v-for="key in row.psKeys" :key="key" class="keycap">{{ key }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="hint">
+            <el-icon><InfoFilled /></el-icon>
+            在编辑器侧边栏中可以切换快捷键预设或自定义每个快捷键
+          </p>
+        </section>
+
+        <!-- 导出说明 -->
+        <section id="export" class="doc-section">
+          <h2 class="section-title"><span class="title-number">5</span>导出说明</h2>
+          <div class="info-grid">
+            <div class="info-card">
+              <h4>下载 PNG</h4>
+              <p>在"导出预览"标签页或侧边栏点击下载按钮，获得带坐标轴边框的图纸图片。</p>
+            </div>
+            <div class="info-card">
+              <h4>导出倍率</h4>
+              <p>支持 1x ~ 4x 倍率导出，获取更高分辨率图片。</p>
+            </div>
+            <div class="info-card">
+              <h4>压缩字符串</h4>
+              <p>使用 RLE 行程编码压缩图纸数据，方便在专注拼豆页面导入分享。</p>
+            </div>
+          </div>
+        </section>
+
+        <footer class="help-footer">
+          <span>拼豆图纸生成器 DDG</span>
+          <a href="https://github.com/DerilJust/DDG" target="_blank">GitHub</a>
+        </footer>
+      </el-main>
+
+      <!-- Loading overlay -->
+      <div class="page-loading" :class="{ 'loading-done': !isLoading }">
+        <div class="loading-beads">
+          <span
+            v-for="i in 4"
+            :key="i"
+            class="loading-dot"
+            :style="{ animationDelay: `${i * 0.15}s` }"
+          />
         </div>
-      </section>
-
-      <!-- 快捷键参考 -->
-      <section id="shortcuts" class="doc-section">
-        <h2 class="section-title"><span class="title-number">4</span>快捷键参考</h2>
-        <div class="preset-group">
-          <table class="shortcut-table">
-            <thead>
-              <tr>
-                <th>功能</th>
-                <th>默认预设</th>
-                <th>类PS风格</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in combinedShortcutRows" :key="row.label">
-                <td class="fn-col">{{ row.label }}</td>
-                <td class="key-col">
-                  <span v-for="key in row.defaultKeys" :key="key" class="keycap">{{ key }}</span>
-                </td>
-                <td class="key-col">
-                  <span v-for="key in row.psKeys" :key="key" class="keycap">{{ key }}</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="hint">
-          <el-icon><InfoFilled /></el-icon>
-          在编辑器侧边栏中可以切换快捷键预设或自定义每个快捷键
-        </p>
-      </section>
-
-      <!-- 导出说明 -->
-      <section id="export" class="doc-section">
-        <h2 class="section-title"><span class="title-number">5</span>导出说明</h2>
-        <div class="info-grid">
-          <div class="info-card">
-            <h4>下载 PNG</h4>
-            <p>在"导出预览"标签页或侧边栏点击下载按钮，获得带坐标轴边框的图纸图片。</p>
-          </div>
-          <div class="info-card">
-            <h4>导出倍率</h4>
-            <p>支持 1x ~ 4x 倍率导出，获取更高分辨率图片。</p>
-          </div>
-          <div class="info-card">
-            <h4>压缩字符串</h4>
-            <p>使用 RLE 行程编码压缩图纸数据，方便在专注拼豆页面导入分享。</p>
-          </div>
-        </div>
-      </section>
-
-      <footer class="help-footer">
-        <span>拼豆图纸生成器 DDG</span>
-        <a href="https://github.com/DerilJust/DDG" target="_blank">GitHub</a>
-      </footer>
-    </main>
-
-    <!-- Loading overlay -->
-    <div class="page-loading" :class="{ 'loading-done': !isLoading }">
-      <div class="loading-beads">
-        <span
-          v-for="i in 4"
-          :key="i"
-          class="loading-dot"
-          :style="{ animationDelay: `${i * 0.15}s` }"
-        />
+        <p class="loading-text">加载中...</p>
       </div>
-      <p class="loading-text">加载中...</p>
-    </div>
+    </el-container>
   </div>
 </template>
 
@@ -165,8 +185,10 @@ import {
   Picture
 } from '@element-plus/icons-vue'
 import { SHORTCUT_PRESETS } from '../composables/useKeyboardShortcuts'
+import { useBreakpoint } from '../composables/useBreakpoint'
 import type { ShortcutConfig } from '../types'
 
+const { isMobile, isTablet } = useBreakpoint()
 const isLoading = ref(true)
 const activeSection = ref('quick-start')
 
@@ -279,18 +301,13 @@ onUnmounted(() => {
 <style scoped>
 .help-page {
   flex: 1;
-  display: flex;
   min-height: 0;
-  background: #f8f9fb;
 }
 
 /* ---- sidebar ---- */
 .help-sidebar {
-  width: 200px;
-  flex-shrink: 0;
   border-right: 1px solid #e9edf4;
   padding: 0;
-  overflow-y: auto;
   background: #fff;
 }
 
@@ -335,10 +352,9 @@ onUnmounted(() => {
 
 /* ---- content ---- */
 .help-content {
-  flex: 1;
   padding: 36px 56px 64px;
-  overflow-y: auto;
   min-width: 0;
+  background: #f8f9fb;
 }
 
 .doc-section {
@@ -482,25 +498,26 @@ onUnmounted(() => {
   margin: 0;
 }
 
-/* ---- tools ---- */
-.tools-row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
+/* ---- info cards ---- */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
 }
 
+.info-card {
+  background: #fff;
+  border: 1px solid #e9edf4;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 10px;
+}
+
+/* ---- tools ---- */
 .tool-chip {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: #fff;
-  border: 1px solid #e9edf4;
-  border-radius: 8px;
-  padding: 10px 16px;
-  flex: 1 1 auto;
-  min-width: 100px;
-  transition: all 0.2s;
+  gap: 8px;
 }
 
 .tool-chip:hover {
@@ -523,22 +540,6 @@ onUnmounted(() => {
   font-size: 12px;
   color: #909399;
   margin-left: auto;
-}
-
-/* ---- info cards ---- */
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.info-card {
-  background: #fff;
-  border: 1px solid #e9edf4;
-  border-radius: 10px;
-  padding: 16px 20px;
-  margin-bottom: 16px;
 }
 
 .info-card h4 {
@@ -705,6 +706,159 @@ onUnmounted(() => {
 
 .help-footer a:hover {
   text-decoration: underline;
+}
+
+/* ---- top nav (mobile) ---- */
+.top-nav {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  background: #fff;
+  border-bottom: 1px solid #e9edf4;
+  padding: 0 8px;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  scrollbar-width: none;
+}
+
+.top-nav::-webkit-scrollbar {
+  height: 0;
+  display: none;
+}
+
+.top-nav-link {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #606266;
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.top-nav-link.active {
+  color: #409eff;
+  border-bottom-color: #409eff;
+}
+
+/* ---- responsive ---- */
+@media (max-width: 767px) {
+  .help-content {
+    padding: 16px 12px 40px;
+  }
+
+  .help-content.is-mobile {
+    padding: 16px 12px 40px;
+  }
+
+  .doc-section {
+    margin-bottom: 40px;
+  }
+
+  .section-title {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+
+  .title-number {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+
+  .step-card {
+    padding: 12px 14px;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .step-connector {
+    left: 18px;
+    top: 48px;
+  }
+
+  .step-body h4 {
+    font-size: 14px;
+  }
+
+  .step-body p {
+    font-size: 12px;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .info-card {
+    padding: 12px 16px;
+  }
+
+  .tool-chip {
+    gap: 6px;
+  }
+
+  .tool-desc {
+    font-size: 11px;
+  }
+
+  .param-row {
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 16px;
+  }
+
+  .param-name {
+    min-width: unset;
+  }
+
+  .shortcut-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .shortcut-table th,
+  .shortcut-table td {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .help-footer {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+    align-items: center;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .help-content {
+    padding: 24px 28px 48px;
+  }
+
+  .section-title {
+    font-size: 20px;
+  }
+
+  .info-grid {
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  }
+
+  .step-card {
+    padding: 16px 20px;
+  }
+}
+
+/* ---- shortcut table scroll wrapper ---- */
+.shortcut-table-wrap {
+  width: 100%;
+  overflow-x: auto;
 }
 
 /* ---- Page Loading Overlay ---- */

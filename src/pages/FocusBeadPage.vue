@@ -1,8 +1,10 @@
 <template>
   <div class="focus-page">
     <el-container class="root-container">
+      <!-- Desktop/Tablet: sidebar as el-aside -->
       <el-aside
-        :width="isCollapsed ? '0px' : '300px'"
+        v-if="!isMobile"
+        :width="isCollapsed ? '0px' : isTablet ? '240px' : '300px'"
         class="aside"
         :class="{ collapsed: isCollapsed }"
       >
@@ -25,13 +27,41 @@
         />
       </el-aside>
 
+      <!-- Mobile: sidebar content in drawer -->
+      <el-drawer
+        v-else
+        v-model="drawerVisible"
+        direction="ltr"
+        size="85%"
+        :with-header="false"
+        class="mobile-drawer"
+      >
+        <ImportSection ref="importSectionRef" @import="handleMobileImport">
+          <template #title-actions>
+            <el-button
+              :icon="Fold"
+              circle
+              size="small"
+              class="collapse-btn"
+              @click="drawerVisible = false"
+            />
+          </template>
+        </ImportSection>
+        <ColorHighlightList
+          v-if="colorStats.length > 0"
+          :color-stats="colorStats"
+          :highlighted-keys="highlightedKeys"
+          @toggle-highlight="toggleHighlight"
+        />
+      </el-drawer>
+
       <el-main class="main">
         <el-button
-          v-if="isCollapsed"
+          v-if="isCollapsed || isMobile"
           class="sidebar-toggle-fab"
           circle
           size="small"
-          @click="toggleSidebar"
+          @click="openSidebar"
         >
           <el-icon :size="18"><Expand /></el-icon>
         </el-button>
@@ -69,10 +99,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref, nextTick } from 'vue'
+import { onMounted, reactive, ref, nextTick, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { Edit, Expand, Fold } from '@element-plus/icons-vue'
 import { useAppStore } from '../store/appStore'
+import { useBreakpoint } from '../composables/useBreakpoint'
 import ImportSection from '../components/ImportSection.vue'
 import ColorHighlightList from '../components/ColorHighlightList.vue'
 import PatternViewer from '../components/PatternViewer.vue'
@@ -80,10 +111,31 @@ import PatternViewer from '../components/PatternViewer.vue'
 const appStore = useAppStore()
 const { patternGrid, gridWidth, colorStats, perlerColors } = storeToRefs(appStore)
 
+const { isMobile, isTablet } = useBreakpoint()
+
 const importSectionRef = ref<InstanceType<typeof ImportSection> | null>(null)
 const highlightedKeys = reactive(new Set<string>())
 const isLoading = ref(true)
 const isCollapsed = ref(false)
+const drawerVisible = ref(false)
+
+watch(
+  isTablet,
+  (val) => {
+    if (val) {
+      isCollapsed.value = true
+    }
+  },
+  { immediate: true }
+)
+
+function openSidebar() {
+  if (isMobile.value) {
+    drawerVisible.value = true
+  } else {
+    isCollapsed.value = false
+  }
+}
 
 function toggleSidebar() {
   isCollapsed.value = !isCollapsed.value
@@ -105,6 +157,11 @@ function handleImport(compressed: string) {
   } else {
     importSectionRef.value?.setStatus('导入失败：压缩数据格式无效', 'error')
   }
+}
+
+function handleMobileImport(compressed: string) {
+  handleImport(compressed)
+  drawerVisible.value = false
 }
 
 onMounted(async () => {
@@ -199,6 +256,15 @@ onMounted(async () => {
 
 .sidebar-toggle-fab:hover {
   transform: scale(1.1);
+}
+
+/* Mobile drawer */
+.mobile-drawer :deep(.el-drawer__body) {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
 }
 
 /* ---- Page Loading Overlay ---- */

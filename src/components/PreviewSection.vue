@@ -4,7 +4,7 @@
       <div
         ref="containerRef"
         class="canvas-container"
-        :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
+        :style="{ cursor: editCursor }"
         @wheel.prevent="handleWheel"
         @mousedown="handleMouseDown"
         @mousemove="handleMouseMove"
@@ -101,10 +101,41 @@ const selectionEnd = ref<Point | null>(null)
 
 let rafId: number | null = null
 
-const showCoordBorder = computed(() => !showNumbers.value)
+// SVG custom cursors — tool tips aligned to hotspot for intuitive clicking
+const CURSOR_BRUSH =
+  'url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyNCcgaGVpZ2h0PScyNCcgdmlld0JveD0nMCAwIDI0IDI0Jz48bGluZSB4MT0nNycgeTE9JzcnIHgyPScyMCcgeTI9JzIwJyBzdHJva2U9JyNjNDlhM2MnIHN0cm9rZS13aWR0aD0nMi41JyBzdHJva2UtbGluZWNhcD0ncm91bmQnLz48cG9seWdvbiBwb2ludHM9JzcsNyAyLDUgNiwyIDksNScgZmlsbD0nIzQwOWVmZicgc3Ryb2tlPScjMmM3ZmQ4JyBzdHJva2Utd2lkdGg9JzAuOCcvPjwvc3ZnPg==) 4 4, default'
+const CURSOR_ERASER =
+  'url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyNCcgaGVpZ2h0PScyNCcgdmlld0JveD0nMCAwIDI0IDI0Jz48cmVjdCB4PSc1JyB5PSc2JyB3aWR0aD0nMTQnIGhlaWdodD0nMTUnIHJ4PScyJyBmaWxsPScjZjI5YzljJyBzdHJva2U9JyNlMDYwNjAnIHN0cm9rZS13aWR0aD0nMS4yJy8+PHJlY3QgeD0nNScgeT0nMTYnIHdpZHRoPScxNCcgaGVpZ2h0PSc1JyByeD0nMScgZmlsbD0nIzNiODJmNicvPjxyZWN0IHg9JzcnIHk9JzE3JyB3aWR0aD0nMTAnIGhlaWdodD0nMS41JyByeD0nMC41JyBmaWxsPScjZmZmJyBvcGFjaXR5PScwLjQnLz48cmVjdCB4PSc1JyB5PSc3JyB3aWR0aD0nMTQnIGhlaWdodD0nMS41JyByeD0nMC41JyBmaWxsPScjZTA2MDYwJyBvcGFjaXR5PScwLjQnLz48L3N2Zz4=) 4 4, crosshair'
+const CURSOR_FILL =
+  'url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyNCcgaGVpZ2h0PScyNCcgdmlld0JveD0nMCAwIDI0IDI0Jz48ZWxsaXBzZSBjeD0nNicgY3k9JzUnIHJ4PSc0JyByeT0nMi41JyBmaWxsPScjOWNhM2FmJyBzdHJva2U9JyM2YjcyODAnIHN0cm9rZS13aWR0aD0nMC43Jy8+PHBhdGggZD0nTTIgNSBMMyAxNiBRNyAxOSAxMCAxNiBMMTAgNScgZmlsbD0nI2QxZDVkYicgc3Ryb2tlPScjNmI3MjgwJyBzdHJva2Utd2lkdGg9JzAuNycgc3Ryb2tlLWxpbmVqb2luPSdyb3VuZCcvPjxwYXRoIGQ9J00yIDkgUTYgMTIgMTAgOScgZmlsbD0nbm9uZScgc3Ryb2tlPScjOWNhM2FmJyBzdHJva2Utd2lkdGg9JzAuNScvPjxwYXRoIGQ9J00yIDEyIFE2IDE1IDEwIDEyJyBmaWxsPSdub25lJyBzdHJva2U9JyM5Y2EzYWYnIHN0cm9rZS13aWR0aD0nMC41Jy8+PGNpcmNsZSBjeD0nMycgY3k9JzYnIHI9JzEuMycgZmlsbD0nI2ZiYmYyNCcgc3Ryb2tlPScjZjU5ZTBiJyBzdHJva2Utd2lkdGg9JzAuNScvPjwvc3ZnPg==) 4 8, cell'
+const CURSOR_EYEDROPPER =
+  'url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyNCcgaGVpZ2h0PScyNCcgdmlld0JveD0nMCAwIDI0IDI0Jz48bGluZSB4MT0nMTknIHkxPScxNycgeDI9JzUnIHkyPSc0LjUnIHN0cm9rZT0nIzk0YTNiOCcgc3Ryb2tlLXdpZHRoPScyLjUnIHN0cm9rZS1saW5lY2FwPSdyb3VuZCcvPjxjaXJjbGUgY3g9JzUnIGN5PSc0LjUnIHI9JzInIGZpbGw9JyNmYmJmMjQnIHN0cm9rZT0nI2Y1OWUwYicgc3Ryb2tlLXdpZHRoPScwLjgnLz48bGluZSB4MT0nMTcnIHkxPScxOCcgeDI9JzIwJyB5Mj0nMTUnIHN0cm9rZT0nIzk0YTNiOCcgc3Ryb2tlLXdpZHRoPScyJyBzdHJva2UtbGluZWNhcD0ncm91bmQnLz48L3N2Zz4=) 4 4, pointer'
+const CURSOR_HAND_CLOSED =
+  'url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyNCcgaGVpZ2h0PScyNCcgdmlld0JveD0nMCAwIDI0IDI0Jz48cGF0aCBkPSdNMTYgOVY1YTIgMiAwIDAgMC00IDBsLTIgNy0yLTFhMiAyIDAgMCAwLTMgMS41bDMgOWEyLjUgMi41IDAgMCAwIDIuNSAxLjVoNGEzLjUgMy41IDAgMCAwIDMuNS0zLjVWMTJhMi41IDIuNSAwIDAgMC0yLjUtMi41JyBmaWxsPScjZmJiZjI0JyBmaWxsLW9wYWNpdHk9JzAuODUnIHN0cm9rZT0nI2Q5NzcwNicgc3Ryb2tlLXdpZHRoPScwLjgnLz48L3N2Zz4=) 12 14, grabbing'
+const CURSOR_HAND_OPEN =
+  'url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyNCcgaGVpZ2h0PScyNCcgdmlld0JveD0nMCAwIDI0IDI0Jz48cGF0aCBkPSdNOCAxMFY2YTIgMiAwIDAgMSA0IDB2MWwxLTFhMiAyIDAgMCAxIDMgMHYzaDFhMi41IDIuNSAwIDAgMSAyLjUgMi41djMuNWE0IDQgMCAwIDEtNCA0SDEwYTMgMyAwIDAgMS0zLTNMNCAxMWEyIDIgMCAwIDEgMy0xLjVsMSAwLjVWOGEyIDIgMCAwIDEgMy0xLjUnIGZpbGw9JyNmYmJmMjQnIGZpbGwtb3BhY2l0eT0nMC44NScgc3Ryb2tlPScjZDk3NzA2JyBzdHJva2Utd2lkdGg9JzAuOCcvPjwvc3ZnPg==) 12 14, grab'
+
+const editCursor = computed(() => {
+  if (!editMode.value) return isDragging.value ? CURSOR_HAND_CLOSED : CURSOR_HAND_OPEN
+  switch (selectedTool.value) {
+    case 'brush':
+      return CURSOR_BRUSH
+    case 'eraser':
+      return CURSOR_ERASER
+    case 'fill':
+      return CURSOR_FILL
+    case 'eyedropper':
+      return CURSOR_EYEDROPPER
+    case 'pan':
+      return isDragging.value ? CURSOR_HAND_CLOSED : CURSOR_HAND_OPEN
+    default:
+      return 'default'
+  }
+})
+const showCoordBorder = computed(() => true)
 const cellSize = computed(() => (showNumbers.value ? 40 : 20))
-const axisMargin = computed(() => (showNumbers.value ? 44 : 12))
-const borderOffset = computed(() => (showCoordBorder.value ? 1 : 0))
+const axisMargin = computed(() => 12)
+const borderOffset = computed(() => 1)
 
 const getDisplayScale = (): { x: number; y: number } => {
   return { x: viewScale.value, y: viewScale.value }
@@ -201,8 +232,12 @@ const selectionOverlayStyle = computed<Record<string, string>>(() => {
   const maxX = Math.max(selectionStart.value.x, end.x)
   const maxY = Math.max(selectionStart.value.y, end.y)
 
-  const left = viewOffsetX.value + viewScale.value * (axisMargin.value + minX * cellSize.value)
-  const top = viewOffsetY.value + viewScale.value * (axisMargin.value + minY * cellSize.value)
+  const left =
+    viewOffsetX.value +
+    viewScale.value * (axisMargin.value + (minX + borderOffset.value) * cellSize.value)
+  const top =
+    viewOffsetY.value +
+    viewScale.value * (axisMargin.value + (minY + borderOffset.value) * cellSize.value)
   const width = viewScale.value * (maxX - minX + 1) * cellSize.value
   const height = viewScale.value * (maxY - minY + 1) * cellSize.value
 
@@ -408,6 +443,13 @@ const handleCanvasPointerDown = (e: PointerEvent) => {
 
   const cell = getGridCell(e)
   if (!cell || !cell.inGrid) return
+
+  // 只有画笔和橡皮支持拖拽选区；填充和吸管点击即执行
+  if (selectedTool.value === 'fill' || selectedTool.value === 'eyedropper') {
+    appStore.setPendingSelection({ type: 'cell', x: cell.x, y: cell.y })
+    return
+  }
+
   pointerDown.value = true
   selectionStart.value = { x: cell.x, y: cell.y }
   selectionEnd.value = { x: cell.x, y: cell.y }
