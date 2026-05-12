@@ -121,7 +121,7 @@ const drawerVisible = ref(false)
 
 watch(
   isTablet,
-  (val) => {
+  (val: any) => {
     if (val) {
       isCollapsed.value = true
     }
