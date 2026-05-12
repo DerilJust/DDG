@@ -2,8 +2,10 @@
   <div class="editor-page">
     <el-container class="root-container">
       <el-container>
+        <!-- Desktop/Tablet: sidebar as el-aside -->
         <el-aside
-          :width="isCollapsed ? '0px' : '300px'"
+          v-if="!isMobile"
+          :width="isCollapsed ? '0px' : isTablet ? '240px' : '300px'"
           class="aside"
           :class="{ collapsed: isCollapsed }"
         >
@@ -21,14 +23,39 @@
           <Controls @generate="generatePattern" @download="downloadPattern" />
           <PatternInfo />
         </el-aside>
+
+        <!-- Mobile: sidebar content in drawer -->
+        <el-drawer
+          v-else
+          v-model="drawerVisible"
+          direction="ltr"
+          size="85%"
+          :with-header="false"
+          class="mobile-drawer"
+        >
+          <UploadSection>
+            <template #title-actions>
+              <el-button
+                :icon="Fold"
+                circle
+                size="small"
+                class="collapse-btn"
+                @click="drawerVisible = false"
+              />
+            </template>
+          </UploadSection>
+          <Controls @generate="onMobileGenerate" @download="downloadPattern" />
+          <PatternInfo />
+        </el-drawer>
+
         <div class="main-wrapper">
           <el-main class="main">
             <el-button
-              v-if="isCollapsed"
+              v-if="isCollapsed || isMobile"
               class="sidebar-toggle-fab"
               circle
               size="small"
-              @click="toggleSidebar"
+              @click="openSidebar"
             >
               <el-icon :size="18">
                 <Expand />
@@ -56,7 +83,7 @@
               </el-tab-pane>
             </el-tabs>
           </el-main>
-          <el-footer height="180px" class="editor-footer">
+          <el-footer :height="isMobile ? 'auto' : '180px'" class="editor-footer">
             <EditPalette
               :palette="effectivePalette"
               :brand-palette="brandPalette"
@@ -65,12 +92,14 @@
               :selected-tool="selectedTool"
               :can-undo="undoStack.length > 0"
               :can-redo="redoStack.length > 0"
+              :collapsed="isMobile && paletteCollapsed"
               @select="onEditSelectColor"
               @fill-all="onEditFillAll"
               @undo="onEditUndo"
               @redo="onEditRedo"
               @update:edit-mode="appStore.setEditMode($event)"
               @update:selected-tool="appStore.setSelectedTool($event)"
+              @toggle-collapse="paletteCollapsed = !paletteCollapsed"
             />
           </el-footer>
         </div>
@@ -93,10 +122,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, nextTick } from 'vue'
+import { computed, onMounted, ref, nextTick, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAppStore } from '../store/appStore'
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
+import { useBreakpoint } from '../composables/useBreakpoint'
 import { buildBrandPalette } from '../utils/patternUtils'
 import UploadSection from '../components/UploadSection.vue'
 import Controls from '../components/Controls.vue'
@@ -120,12 +150,16 @@ const {
   selectedBrand
 } = storeToRefs(appStore)
 
+const { isMobile, isTablet } = useBreakpoint()
+
 const brandPalette = computed(() => buildBrandPalette(perlerColors.value, selectedBrand.value))
 
 const isLoading = ref(true)
 const previewSection = ref<InstanceType<typeof PreviewSection> | null>(null)
 const isCollapsed = ref(false)
 const activeTab = ref('pattern')
+const drawerVisible = ref(false)
+const paletteCollapsed = ref(true)
 
 onMounted(async () => {
   appStore.loadColorData()
@@ -138,6 +172,17 @@ onMounted(async () => {
   })
 })
 
+// Collapse sidebar by default on tablet
+watch(
+  isTablet,
+  (val) => {
+    if (val) {
+      isCollapsed.value = true
+    }
+  },
+  { immediate: true }
+)
+
 useKeyboardShortcuts(() => appStore.activeShortcutConfig, {
   toggleEditMode: () => appStore.setEditMode(!editMode.value),
   setTool: (tool) => appStore.setSelectedTool(tool as typeof selectedTool.value),
@@ -149,8 +194,21 @@ useKeyboardShortcuts(() => appStore.activeShortcutConfig, {
   }
 })
 
+const openSidebar = (): void => {
+  if (isMobile.value) {
+    drawerVisible.value = true
+  } else {
+    isCollapsed.value = false
+  }
+}
+
 const toggleSidebar = (): void => {
   isCollapsed.value = !isCollapsed.value
+}
+
+const onMobileGenerate = (): void => {
+  generatePattern()
+  drawerVisible.value = false
 }
 
 const generatePattern = (): void => {
@@ -280,6 +338,28 @@ const onEditRedo = () => {
   background: #fff;
   border: 1px solid #e4e7ed;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* Mobile drawer */
+.mobile-drawer :deep(.el-drawer__body) {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+}
+
+/* Responsive */
+@media (max-width: 767px) {
+  .editor-footer {
+    padding: 6px 8px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .editor-footer {
+    padding: 8px 12px;
+  }
 }
 
 /* ---- Page Loading Overlay ---- */

@@ -49,10 +49,10 @@ const containerRef = ref<HTMLElement | null>(null)
 
 let rafId: number | null = null
 
-const showCoordBorder = computed(() => !showNumbers.value)
+const showCoordBorder = computed(() => true)
 const cellSize = computed(() => (showNumbers.value ? 40 : 20))
-const axisMargin = computed(() => (showNumbers.value ? 44 : 12))
-const borderOffset = computed(() => (showCoordBorder.value ? 1 : 0))
+const axisMargin = computed(() => 12)
+const borderOffset = computed(() => 1)
 
 const initCanvasSize = (): void => {
   if (!patternCanvas.value || !containerRef.value) return

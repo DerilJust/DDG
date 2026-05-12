@@ -451,7 +451,7 @@ const uploadCroppedImage = async () => {
 .cropper-wrapper {
   position: relative;
   width: 100%;
-  height: 400px;
+  height: clamp(250px, 60vh, 400px);
   border: 1px solid #e4e7ed;
   border-radius: 8px;
   overflow: hidden;

@@ -32,15 +32,20 @@ eyedropper tools.
 
 ```
 LICENSE                            # MIT License
+public/
+  logo.png                         # Site icon / favicon
+  favicon.svg                      # SVG favicon fallback
+  icons.svg                        # Icon sprite sheet
 src/
   main.ts                          # App entry -- creates Pinia + ElementPlus + Router + mounts
-  App.vue                          # Root layout: header with nav tabs, <router-view>
-  style.css                        # Global CSS variables, scrollbar, font-face
+  App.vue                          # Root layout: header with responsive nav (tabs or drawer)
+  style.css                        # Global CSS variables, responsive breakpoints, scrollbar, font-face
+  vite-env.d.ts                    # Vite client type declarations
   router/
     index.ts                       # Vue Router 4 config (hash history, 4 lazy-loaded routes)
   pages/
     HomePage.vue                   # Landing page with hero section and feature cards
-    EditorPage.vue                 # Full editor (sidebar + tabs + footer) -- migrated from App.vue
+    EditorPage.vue                 # Full editor (sidebar + tabs + footer)
     FocusBeadPage.vue              # Focus mode (import + color highlight + collapsible sidebar)
     HelpPage.vue                   # Help/documentation page (quick start, editor, params, shortcuts)
   types/
@@ -50,6 +55,8 @@ src/
   composables/
     useAspectRatioLock.ts          # Composable: watches gridWidth/gridHeight, cross-updates
                                    # when lockAspectRatio is on, using image's aspect ratio
+    useBreakpoint.ts               # Composable: responsive breakpoint detection (mobile/tablet/desktop)
+                                   # Returns isMobile, isTablet, isDesktop refs
     useKeyboardShortcuts.ts       # Composable: keyboard shortcut presets and registration
   utils/
     patternUtils.ts                # Color matching (findClosestColor), quantization
@@ -60,6 +67,7 @@ src/
                                    # (fillConnectedRegion via stack-based BFS)
     selectionUtils.ts              # Selection geometry -- normalize, clamp, getPendingCells
     compressionUtils.ts            # RLE string compression/decompression for pattern grid export
+    shortcutStorage.ts             # LocalStorage persistence for custom shortcut configs
   components/
     UploadSection.vue              # Sidebar "图片上传" card -- opens UploadDialog
     CropperDialog.vue              # Modal dialog: image crop with handles, zoom slider,
@@ -68,7 +76,6 @@ src/
     Controls.vue                   # Sidebar "参数设置" form (grid size, color count, brand, etc.)
     CanvasViewer.vue               # Reusable Canvas viewer (render, pan, zoom)
     PatternInfo.vue                # Sidebar color usage statistics table
-    SourceImageCard.vue            # Tab: original image preview
     PreviewSection.vue             # Tab: perler pattern canvas viewer (with edge extension)
     ExportPreview.vue              # Tab: export-ready preview + download + compressed string export
     EditPalette.vue                # Footer: color palette editor, tool selector, undo/redo
@@ -77,8 +84,19 @@ src/
     ImportSection.vue              # Focus mode compressed data import
   colorMap/
     colorSystemMapping.json        # 292 HEX keys -> { MARD, COCO, 漫漫, 盼盼, 咪小窝 } brand codes
+    colorMap.json                  # Standalone color mapping data
   assets/
     fonts/ChillBitmap_16px.ttf     # Pixel font for the title
+tests/
+  appStore.test.ts                 # Store unit tests
+  compressionUtils.test.ts         # RLE compression/decompression tests
+  Controls.test.ts                 # Controls component tests
+  EditPalette.test.ts              # Edit palette component tests
+  editUtils.test.ts                # Edit utility tests
+  PatternInfo.test.ts              # Pattern info component tests
+  patternRenderer.test.ts          # Renderer tests
+  patternUtils.test.ts             # Color matching / quantization tests
+  selectionUtils.test.ts           # Selection geometry tests
 ```
 
 ## Architecture / Data Flow
@@ -112,6 +130,22 @@ Vue Router 4 with hash history (`createWebHashHistory`). Four routes:
 | `/editor` | EditorPage    | Full perler bead pattern editor              |
 | `/focus`  | FocusBeadPage | Focus mode (import + color highlight)        |
 | `/help`   | HelpPage      | Help/documentation page                      |
+
+### Responsive Breakpoints
+
+`useBreakpoint()` composable provides three reactive booleans:
+
+| Breakpoint  | Width      | Behavior                                    |
+| ----------- | ---------- | ------------------------------------------- |
+| `isMobile`  | <= 767px   | Drawer nav, stacked layouts, minimal chrome |
+| `isTablet`  | 768–1023px | Compact tabs, reduced sidebar, mid padding  |
+| `isDesktop` | >= 1024px  | Full horizontal nav, full sidebar           |
+
+Key responsive behaviors:
+
+- **App.vue header**: Horizontal nav-tabs on desktop/tablet; hamburger button + `el-drawer` (ttb) on mobile
+- **EditorPage / FocusBeadPage**: `el-aside` sidebar on desktop/tablet (collapsible, tablet defaults collapsed); `el-drawer` (ltr) on mobile
+- **HelpPage**: `el-aside` sidebar nav on desktop/tablet; sticky horizontal scrollable top-nav on mobile
 
 ### Image Processing Pipeline
 
@@ -147,7 +181,7 @@ The composable `useAspectRatioLock` in UploadDialog:
 
 ```
 App.vue
-  |-- (header with nav tabs: Home, Editor, Focus, Help)
+  |-- (header: logo + title + nav-tabs or hamburger/drawer on mobile)
   |-- <router-view>
         |-- HomePage.vue
         |-- EditorPage.vue
@@ -155,7 +189,6 @@ App.vue
         |     |     |-- UploadDialog.vue  (uses useAspectRatioLock composable)
         |     |-- Controls.vue            (uses useAspectRatioLock composable)
         |     |-- PatternInfo.vue
-        |     |-- SourceImageCard.vue
         |     |-- PreviewSection.vue
         |     |-- ExportPreview.vue
         |     |-- EditPalette.vue
@@ -170,7 +203,7 @@ App.vue
 
 - Parent-child: props + emits (e.g., UploadDialog emits `confirm(data)`)
 - Shared state: Pinia store accessed via `useAppStore()` + `storeToRefs()`
-- Composables: `useAspectRatioLock()` encapsulates the lock logic, used by UploadDialog and Controls
+- Composables: `useAspectRatioLock()` encapsulates the lock logic, used by UploadDialog and Controls; `useBreakpoint()` provides responsive breakpoints used by all pages and App.vue; `useKeyboardShortcuts()` manages shortcut presets and registration
 
 ## Build Commands
 

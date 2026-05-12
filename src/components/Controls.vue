@@ -449,4 +449,42 @@ function saveShortcuts() {
   color: #606266;
   font-weight: 500;
 }
+
+/* Responsive */
+@media (max-width: 767px) {
+  .form-wrapper :deep(.el-form-item) {
+    display: block;
+    margin-bottom: 14px;
+  }
+
+  .form-wrapper :deep(.el-form-item__label) {
+    width: 100% !important;
+    text-align: left;
+    margin-bottom: 4px;
+    font-size: 14px;
+  }
+
+  .form-wrapper :deep(.el-form-item__content) {
+    margin-left: 0 !important;
+  }
+
+  .button-footer {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .slider-row {
+    flex-wrap: wrap;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .form-wrapper {
+    padding: 14px;
+  }
+
+  :deep(.el-form-item__label) {
+    font-size: 14px;
+  }
+}
 </style>

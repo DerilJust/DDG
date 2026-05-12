@@ -57,6 +57,10 @@ function isHighlighted(stat: ColorStat): boolean {
 <style scoped>
 .color-highlight-list {
   margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .section-title {
@@ -79,7 +83,8 @@ function isHighlighted(stat: ColorStat): boolean {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-height: calc(100vh - 420px);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 

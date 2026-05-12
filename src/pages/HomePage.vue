@@ -7,6 +7,9 @@
       </div>
       <div class="hero-overlay" />
       <div class="hero-content">
+        <div class="hero-logo-wrap">
+          <img src="/logo.png" alt="Logo" class="hero-logo" />
+        </div>
         <div class="hero-badge">
           <el-tag type="primary" round size="large">v1.0</el-tag>
           <a
@@ -73,12 +76,12 @@
       </div>
       <el-row :gutter="28" justify="center">
         <el-col
+          v-for="(feat, idx) in features"
+          :key="feat.title"
           style="margin-bottom: 12px"
           :xs="24"
           :sm="12"
           :lg="8"
-          v-for="(feat, idx) in features"
-          :key="feat.title"
         >
           <div class="feature-card reveal" :style="{ transitionDelay: `${idx * 0.1}s` }">
             <div class="feature-icon-wrap" :style="{ background: feat.gradient }">
@@ -100,13 +103,13 @@
         <p class="section-subtitle">四步生成您专属的拼豆图纸</p>
       </div>
       <div class="steps">
-        <div class="step" v-for="(step, idx) in steps" :key="step.title">
+        <div v-for="(step, idx) in steps" :key="step.title" class="step">
           <div class="step-number" :style="{ background: step.color }">
             <el-icon :size="24">
               <component :is="step.icon" />
             </el-icon>
           </div>
-          <div class="step-line" v-if="idx < steps.length - 1" />
+          <div v-if="idx < steps.length - 1" class="step-line" />
           <div class="step-card">
             <el-card shadow="hover">
               <h4>{{ step.title }}</h4>
@@ -141,9 +144,9 @@
     <!-- Stats -->
     <section id="stats" class="stats reveal">
       <el-row :gutter="20" justify="center">
-        <el-col :span="6" v-for="stat in stats" :key="stat.label">
+        <el-col v-for="stat in stats" :key="stat.label" :xs="12" :sm="6" :span="6">
           <div class="stat-card">
-            <span class="stat-value">{{ stat.display }}</span>
+            <span class="stat-value">{{ stat.display.value }}</span>
             <span class="stat-label">{{ stat.label }}</span>
           </div>
         </el-col>
@@ -266,10 +269,10 @@ const steps = [
 ]
 
 const stats = [
-  { value: 292, label: '真实拼豆颜色', display: 0 },
-  { value: 5, label: '品牌编码系统', display: 0 },
-  { value: 4, label: '功能页面', display: 0 },
-  { value: 50, label: '最大色阶量化', display: 0 }
+  { target: 292, label: '真实拼豆颜色', display: ref(0) },
+  { target: 5, label: '品牌编码系统', display: ref(0) },
+  { target: 4, label: '功能页面', display: ref(0) },
+  { target: 50, label: '最大色阶量化', display: ref(0) }
 ]
 
 const brands = ['MARD', 'COCO', '漫漫', '盼盼', '咪小窝']
@@ -390,15 +393,15 @@ function animateStats() {
   if (statsAnimated) return
   statsAnimated = true
   for (const stat of stats) {
-    const target = stat.value
+    const target = stat.target
+    const display = stat.display
     const duration = 1500
     const start = performance.now()
     function tick(now: number) {
       const elapsed = now - start
       const progress = Math.min(elapsed / duration, 1)
-      // ease-out
       const eased = 1 - Math.pow(1 - progress, 3)
-      stat.display = Math.round(eased * target)
+      display.value = Math.round(eased * target)
       if (progress < 1) requestAnimationFrame(tick)
     }
     requestAnimationFrame(tick)
@@ -547,6 +550,18 @@ onUnmounted(() => {
   text-align: center;
   padding: 40px 20px;
   max-width: 800px;
+}
+
+.hero-logo-wrap {
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.hero-logo {
+  width: 120px;
+  height: 120px;
+  filter: drop-shadow(0 4px 20px rgba(102, 126, 234, 0.5));
 }
 
 .hero-badge {
@@ -933,25 +948,105 @@ onUnmounted(() => {
 }
 
 /* ========== Responsive ========== */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
+  .hero {
+    min-height: auto;
+    padding: 60px 16px 40px;
+  }
+
   .hero-title .title-line {
-    font-size: 40px;
+    font-size: 32px;
   }
 
   .hero-title .title-line.accent {
-    font-size: 48px;
+    font-size: 36px;
   }
 
   .hero-desc {
-    font-size: 15px;
+    font-size: 14px;
   }
 
   .hero-bg-grid {
     grid-template-columns: repeat(7, 1fr);
   }
 
+  .hero-logo {
+    width: 80px;
+    height: 80px;
+  }
+
+  .hero-mockup {
+    display: none;
+  }
+
+  .hero-content {
+    max-width: 100%;
+  }
+
+  .features {
+    padding: 40px 16px;
+  }
+
+  .section-title {
+    font-size: 24px;
+  }
+
   .stats .stat-value {
-    font-size: 28px;
+    font-size: 24px;
+  }
+
+  .stats .stat-label {
+    font-size: 12px;
+  }
+
+  .color-chip {
+    flex: 0 0 calc(100% / 8);
+    height: 36px;
+  }
+
+  .bottom-cta h2 {
+    font-size: 24px;
+  }
+
+  .bottom-cta {
+    padding: 40px 16px;
+  }
+
+  .step-number {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .step-line {
+    left: 20px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hero {
+    min-height: auto;
+    padding: 80px 24px 60px;
+  }
+
+  .hero-title .title-line {
+    font-size: 48px;
+  }
+
+  .hero-title .title-line.accent {
+    font-size: 56px;
+  }
+
+  .hero-desc {
+    font-size: 16px;
+  }
+
+  .features {
+    padding: 60px 24px;
+  }
+
+  .stats .stat-value {
+    font-size: 32px;
   }
 }
 
