@@ -744,6 +744,8 @@ onUnmounted(() => {
 @media (max-width: 767px) {
   .help-layout {
     flex-direction: column;
+    width: 90%;
+    margin: 0 auto;
   }
 
   .select-nav {
@@ -772,12 +774,19 @@ onUnmounted(() => {
   .step-card {
     padding: 12px 14px;
     flex-direction: column;
+    align-items: center;
     gap: 8px;
   }
 
   .step-connector {
-    left: 18px;
+    left: 50%;
+    transform: translateX(-50%);
     top: 48px;
+  }
+
+  .step-body {
+    text-align: center;
+    width: 100%;
   }
 
   .step-body h4 {
