@@ -30,6 +30,7 @@
     "react-native-safe-area-context": "^5.0.0",
     "react-native-screens": "~4.10.0",
     "react-native-toast-message": "^2.2.0",
+    "upng-js": "^2.1.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {

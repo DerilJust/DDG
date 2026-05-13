@@ -1,58 +1,37 @@
 import { useCallback } from 'react'
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'
+import UPNG from 'upng-js'
 import {
   findClosestColor,
   quantizeColorsUtil,
   ceilToMultipleOf5,
-  type PerlerColor,
   type PatternCell
 } from '@ddg/shared'
 import { useAppStore } from '../store/appStore'
 
-function decodeBase64ToPixels(base64: string, width: number, height: number): Uint8ClampedArray {
+function decodeBase64ToPixels(base64: string): Uint8ClampedArray | null {
   const cleaned = base64.replace(/^data:image\/png;base64,/, '')
   const binaryStr = atob(cleaned)
   const bytes = new Uint8Array(binaryStr.length)
   for (let i = 0; i < binaryStr.length; i++) {
     bytes[i] = binaryStr.charCodeAt(i)
   }
-
-  // 简单解析 PNG：跳过 8 字节签名，查找第一个 IHDR 后的原始像素数据
-  const dataView = new DataView(bytes.buffer)
-  const pixelData = new Uint8ClampedArray(width * height * 4)
-  let offset = 8
-  let pixelIdx = 0
-
-  while (offset < bytes.length - 12 && pixelIdx < pixelData.length) {
-    const chunkLen = dataView.getUint32(offset)
-    const chunkType = String.fromCharCode(
-      bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7]
-    )
-    offset += 8
-
-    if (chunkType === 'IDAT') {
-      const dataStart = offset
-      for (let j = 0; j < Math.min(chunkLen, pixelData.length - pixelIdx); j++) {
-        pixelData[pixelIdx + j] = bytes[dataStart + j]
-      }
-      pixelIdx += chunkLen
-    }
-
-    offset += chunkLen + 4 // +4 for CRC
-  }
-
-  return pixelData
+  const img = UPNG.decode(bytes.buffer)
+  if (!img) return null
+  const rgba = UPNG.toRGBA8(img)
+  if (!rgba || !rgba.length) return null
+  return new Uint8ClampedArray(rgba[0] instanceof ArrayBuffer ? new Uint8Array(rgba[0] as ArrayBuffer) : rgba[0] as Uint8Array)
 }
 
 export function useImageProcessor() {
+  // stable reference — getState() reads latest each call
   const generatePattern = useCallback(async (imageUri: string) => {
-    const store = useAppStore.getState()
-    const { gridWidth, gridHeight, colorCount, perlerColors, selectedBrand, padToMultipleOf5 } = store
+    const { gridWidth, gridHeight, colorCount, perlerColors, selectedBrand, padToMultipleOf5 } =
+      useAppStore.getState()
 
     if (!perlerColors.length) {
-      store.loadColorData()
-      const updated = useAppStore.getState()
-      if (!updated.perlerColors.length) {
+      useAppStore.getState().loadColorData()
+      if (!useAppStore.getState().perlerColors.length) {
         useAppStore.setState({ infoText: '颜色数据加载失败' })
         return
       }
@@ -73,7 +52,6 @@ export function useImageProcessor() {
       topPad = Math.floor((effectiveHeight - originalHeight) / 2)
     }
 
-    // 缩放图片到目标尺寸
     const result = await manipulateAsync(
       imageUri,
       [{ resize: { width: effectiveWidth, height: effectiveHeight } }],
@@ -85,8 +63,12 @@ export function useImageProcessor() {
       return
     }
 
-    // 解码像素数据
-    const pixels = decodeBase64ToPixels(result.base64, effectiveWidth, effectiveHeight)
+    const pixels = decodeBase64ToPixels(result.base64)
+    if (!pixels) {
+      useAppStore.setState({ infoText: '图片解码失败' })
+      return
+    }
+
     const colors = useAppStore.getState().perlerColors
     const colorMap = quantizeColorsUtil(pixels, colorCount, colors)
 

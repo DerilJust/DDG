@@ -51,6 +51,7 @@ interface AppState {
 
   // Actions
   setOriginalImage: (data: ImageFileData) => void
+  setOriginalImageSize: (width: number, height: number) => void
   clearImage: () => void
   setGridWidth: (w: number) => void
   setGridHeight: (h: number) => void
@@ -97,11 +98,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   redoStack: [],
 
   setOriginalImage(data) {
+    // ImageFileData.size 为文件字节大小，像素尺寸由调用方通过 Image.getSize 异步获取后单独设置
     set({
       originalImage: data,
       originalImageUrl: data.uri,
-      originalImageSize: { width: data.size || 0, height: 0 }
+      originalImageSize: { width: 0, height: 0 }
     })
+  },
+
+  setOriginalImageSize(width: number, height: number) {
+    set({ originalImageSize: { width, height } })
   },
 
   clearImage() {
@@ -227,10 +233,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       selectedBrand: brand,
       originalImage: null,
       originalImageUrl: '',
-      originalImageSize: { width: 0, height: 0 },
-      infoText: `已导入: ${result.gridWidth}x${result.gridHeight} 网格, ${get().colorStats.length} 种颜色`
+      originalImageSize: { width: 0, height: 0 }
     })
     get().refreshColorStats()
+    const freshStats = get().colorStats
+    set({ infoText: `已导入: ${result.gridWidth}x${result.gridHeight} 网格, ${freshStats.length} 种颜色` })
     return true
   },
 
@@ -243,6 +250,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   loadColorData() {
+    if (get().perlerColors.length) return
     const colors = Object.entries(
       colorSystemMapping as Record<string, Record<string, string>>
     ).map(([hex, info]) => {
