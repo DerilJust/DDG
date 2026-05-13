@@ -276,7 +276,6 @@ function scrollTo(id: string) {
 
 function onNavSelect(id: string) {
   isScrolling.value = true
-  activeSection.value = id
   const el = document.getElementById(id)
   if (el) {
     el.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -752,10 +751,6 @@ onUnmounted(() => {
   }
 
   .help-content {
-    padding: 16px 12px 40px;
-  }
-
-  .help-content.is-mobile {
     padding: 16px 12px 40px;
   }
 
