@@ -1,6 +1,6 @@
 <template>
   <div class="help-page">
-    <el-container>
+    <div class="help-layout">
       <!-- Desktop/Tablet: sidebar -->
       <el-aside v-if="!isMobile" :width="isTablet ? '160px' : '200px'" class="help-sidebar">
         <div class="sidebar-header">帮助文档</div>
@@ -18,20 +18,24 @@
         </nav>
       </el-aside>
 
-      <!-- Mobile: top horizontal nav -->
-      <nav v-if="isMobile" class="top-nav">
-        <a
-          v-for="section in sections"
-          :key="section.id"
-          :class="['top-nav-link', { active: activeSection === section.id }]"
-          :href="`#${section.id}`"
-          @click.prevent="scrollTo(section.id)"
+      <div class="help-main">
+        <!-- Mobile: section select dropdown -->
+        <el-select
+          v-if="isMobile"
+          v-model="activeSection"
+          class="select-nav"
+          placeholder="选择章节"
+          @change="onNavSelect"
         >
-          {{ section.title }}
-        </a>
-      </nav>
+          <el-option
+            v-for="section in sections"
+            :key="section.id"
+            :label="section.title"
+            :value="section.id"
+          />
+        </el-select>
 
-      <el-main class="help-content" :class="{ 'is-mobile': isMobile }">
+        <el-main class="help-content">
         <!-- 快速开始 -->
         <section id="quick-start" class="doc-section">
           <h2 class="section-title"><span class="title-number">1</span>快速开始</h2>
@@ -149,6 +153,7 @@
           <a href="https://github.com/DerilJust/DDG" target="_blank">GitHub</a>
         </footer>
       </el-main>
+      </div>
 
       <!-- Loading overlay -->
       <div class="page-loading" :class="{ 'loading-done': !isLoading }">
@@ -162,7 +167,7 @@
         </div>
         <p class="loading-text">加载中...</p>
       </div>
-    </el-container>
+    </div>
   </div>
 </template>
 
@@ -191,6 +196,7 @@ import type { ShortcutConfig } from '../types'
 const { isMobile, isTablet } = useBreakpoint()
 const isLoading = ref(true)
 const activeSection = ref('quick-start')
+const isScrolling = ref(false)
 
 const sections = [
   { id: 'quick-start', title: '快速开始', icon: Document },
@@ -268,11 +274,24 @@ function scrollTo(id: string) {
   }
 }
 
+function onNavSelect(id: string) {
+  isScrolling.value = true
+  activeSection.value = id
+  const el = document.getElementById(id)
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  setTimeout(() => {
+    isScrolling.value = false
+  }, 500)
+}
+
 let observer: IntersectionObserver | null = null
 
 onMounted(async () => {
   observer = new IntersectionObserver(
     (entries) => {
+      if (isScrolling.value) return
       for (const entry of entries) {
         if (entry.isIntersecting) {
           activeSection.value = entry.target.id
@@ -299,6 +318,19 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.help-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.help-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .help-page {
   flex: 1;
   min-height: 0;
@@ -708,47 +740,17 @@ onUnmounted(() => {
   text-decoration: underline;
 }
 
-/* ---- top nav (mobile) ---- */
-.top-nav {
-  display: flex;
-  gap: 0;
-  overflow-x: auto;
-  background: #fff;
-  border-bottom: 1px solid #e9edf4;
-  padding: 0 8px;
-  flex-shrink: 0;
-  -webkit-overflow-scrolling: touch;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  scrollbar-width: none;
-}
-
-.top-nav::-webkit-scrollbar {
-  height: 0;
-  display: none;
-}
-
-.top-nav-link {
-  display: flex;
-  align-items: center;
-  padding: 12px 14px 10px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #606266;
-  text-decoration: none;
-  white-space: nowrap;
-  border-bottom: 2px solid transparent;
-  transition: all 0.15s;
-}
-
-.top-nav-link.active {
-  color: #409eff;
-  border-bottom-color: #409eff;
-}
 
 /* ---- responsive ---- */
 @media (max-width: 767px) {
+  .help-layout {
+    flex-direction: column;
+  }
+
+  .select-nav {
+    margin: 12px 12px 0;
+  }
+
   .help-content {
     padding: 16px 12px 40px;
   }
