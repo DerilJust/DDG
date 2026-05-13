@@ -746,10 +746,16 @@ onUnmounted(() => {
     flex-direction: column;
     width: 90%;
     margin: 0 auto;
+    background: #f8f9fb;
   }
 
   .select-nav {
-    margin: 12px 12px 0;
+    padding: 12px 12px 0;
+    margin: 0;
+  }
+
+  .select-nav :deep(.el-input__wrapper) {
+    padding-left: 0;
   }
 
   .help-content {
