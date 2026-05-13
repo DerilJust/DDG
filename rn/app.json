@@ -36,8 +36,7 @@
           "cameraPermission": "需要访问相机来拍摄要转换为拼豆图纸的照片",
           "photosPermission": "需要访问相册来选择要转换为拼豆图纸的图片"
         }
-      ],
-      "expo-image-manipulator"
+      ]
     ]
   }
 }
