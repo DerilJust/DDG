@@ -784,20 +784,12 @@ onUnmounted(() => {
 
   .step-card {
     padding: 12px 14px;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
+    gap: 10px;
   }
 
   .step-connector {
-    left: 50%;
-    transform: translateX(-50%);
-    top: 48px;
-  }
-
-  .step-body {
-    text-align: center;
-    width: 100%;
+    left: 33px;
+    top: 56px;
   }
 
   .step-body h4 {
