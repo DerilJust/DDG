@@ -1,5 +1,11 @@
 import type { PerlerColor, PatternCell, ColorStat } from './patternUtils'
 
+export interface ImageFileData {
+  uri: string
+  name?: string
+  size?: number
+}
+
 export interface ImageSize {
   width: number
   height: number
@@ -21,7 +27,7 @@ export interface ShortcutConfig {
 }
 
 export interface AppStoreState {
-  originalImage: File | null
+  originalImage: ImageFileData | null
   originalImageUrl: string
   originalImageSize: ImageSize
   gridWidth: number
