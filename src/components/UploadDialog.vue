@@ -734,7 +734,7 @@ const handleConfirm = async () => {
   isProcessing.value = true
   try {
     const cropped = await cropCanvasImage(localImageData.value, cropRect.value)
-    appStore.setOriginalImage(cropped.file)
+    appStore.setOriginalImage({ uri: cropped.dataUrl, name: cropped.file.name, size: cropped.file.size })
     appStore.setOriginalImageUrl(cropped.dataUrl)
     appStore.setInfoText('图片已上传')
     appStore.setOriginalImageSize(cropped.image.width, cropped.image.height)
