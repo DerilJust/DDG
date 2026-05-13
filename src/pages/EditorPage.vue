@@ -175,7 +175,7 @@ onMounted(async () => {
 // Collapse sidebar by default on tablet
 watch(
   isTablet,
-  (val) => {
+  (val: any) => {
     if (val) {
       isCollapsed.value = true
     }

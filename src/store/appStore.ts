@@ -15,7 +15,7 @@ import { clonePatternGrid, fillConnectedRegion } from '../utils/editUtils'
 import { decompressPatternGrid } from '../utils/compressionUtils'
 import { loadCustomShortcuts, saveCustomShortcuts } from '../utils/shortcutStorage'
 import { SHORTCUT_PRESETS } from '../composables/useKeyboardShortcuts'
-import type { AppStoreState, ShortcutPresetName, ShortcutConfig } from '../types'
+import type { AppStoreState, ShortcutPresetName, ShortcutConfig, ImageFileData } from '../types'
 import type { PendingSelection } from '../utils/selectionUtils'
 
 const createBlankGrid = (width: number, height: number) => {
@@ -82,7 +82,7 @@ export const useAppStore = defineStore('app', {
     }
   },
   actions: {
-    setOriginalImage(file: File | null) {
+    setOriginalImage(file: ImageFileData | null) {
       this.originalImage = file
     },
     setOriginalImageUrl(url: string) {

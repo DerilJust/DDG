@@ -1,49 +1,15 @@
-import type { PerlerColor, PatternCell, ColorStat } from '../utils/patternUtils'
+export type {
+  ImageFileData,
+  ImageSize,
+  EditingTool,
+  ShortcutPresetName,
+  ShortcutConfig,
+  AppStoreState
+} from '@ddg/shared/types'
+export type { PerlerColor, PatternCell, ColorStat } from '@ddg/shared/patternUtils'
 
-export interface ImageSize {
-  width: number
-  height: number
-}
-
-export type EditingTool = 'brush' | 'fill' | 'pan' | 'eraser' | 'eyedropper'
-
-export type ShortcutPresetName = 'default' | 'photoshop' | 'custom'
-
-export interface ShortcutConfig {
-  toggleEditMode: string
-  toolBrush: string
-  toolFill: string
-  toolEraser: string
-  toolEyedropper: string
-  toolPan: string
-  undo: string
-  redo: string
-}
-
-export interface AppStoreState {
-  originalImage: File | null
-  originalImageUrl: string
-  originalImageSize: ImageSize
-  gridWidth: number
-  gridHeight: number
-  colorCount: number
-  selectedBrand: string
-  showNumbers: boolean
-  lockAspectRatio: boolean
-  padToMultipleOf5: boolean
-  exportScale: number
-  infoText: string
-  perlerColors: PerlerColor[]
-  patternGrid: PatternCell[][]
-  colorStats: ColorStat[]
-  selectedEditColor: PerlerColor | null
-  selectedTool: EditingTool
-  editMode: boolean
-  undoStack: PatternCell[][][]
-  redoStack: PatternCell[][][]
-  shortcutPreset: ShortcutPresetName
-  customShortcutConfig: ShortcutConfig | null
-}
+// 以下为浏览器特有类型，保留在 Vue 端
+import type { PerlerColor } from '@ddg/shared/patternUtils'
 
 export interface CropperImageData {
   offsetX: number
