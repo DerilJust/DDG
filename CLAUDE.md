@@ -5,6 +5,25 @@
 - 尽量在对话和记录中使用中文
 - CLAUDE.md中已有的英文不需要修改成中文
 
+## Verification
+
+- 每次代码改动后，在报告完成前必须运行 `npm run type-check && npm run test`。两项都通过才能声称任务完成。
+- 修改 vite.config.ts、imports 或依赖后，额外运行 `npm run build` 检查 Vite 构建是否正常。
+
+## Git Workflow
+
+- 每个已完成并验证通过的任务或 bug 修复，在进入下一个任务前进行 commit。
+- Commit message 使用 conventional commit 前缀 (feat, fix, refactor, test, docs, chore)。
+
+## Communication
+
+- 如果要做出超出明确请求范围的改动，先询问：'我也可以顺便重构 X 来保持一致——需要我包含这个吗？'
+
+## Vue Conventions
+
+- 编辑 Vue SFC 文件时，优先使用 `<style scoped>`。
+- 避免对动态内容使用 `v-html`。如果确实需要 `v-html`，立即在浏览器中测试渲染效果。
+
 ## Project Overview
 
 拼豆图纸生成器 (Perler Bead Pattern Generator) -- a browser-based tool for generating
@@ -275,8 +294,7 @@ Coverage reports are generated in the `coverage` directory with an HTML line-by-
 
 ## Project-Specific Knowledge
 
-- **Never commit code unless asked**: Very often we'll work on code and iterate. After you think it's complete, let me
-  check it before you commit.
+- **Commit after verification**: 每个已完成并验证通过（type-check + test 通过）的任务，在进入下一个任务前进行 commit。使用 conventional commit 前缀。
 
 ### Code Architecture
 
@@ -311,6 +329,8 @@ Coverage reports are generated in the `coverage` directory with an HTML line-by-
   - Watch for unused variables and ensure proper error handling
   - YOU MUST NEVER bypass git commit hooks on checkins. This leads to failures in CI later on
 
-### Git Workflow
+### Git Workflow (detail)
 
-- When creating branches with Claude, use the `claude/` prefix (e.g., `claude/fix-esm-import-error`)
+- 创建分支时使用 `claude/` 前缀 (e.g., `claude/fix-esm-import-error`)
+- 每个任务完成后执行 `git add -A && git commit -m 'feat: <description>'`
+- 绝不跳过 git hooks (--no-verify), 这会导致 CI 失败
