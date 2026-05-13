@@ -9,24 +9,34 @@
     "newArchEnabled": true,
     "scheme": "ddg",
     "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#409EFF",
+      "resizeMode": "contain"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ddg.app"
+      "bundleIdentifier": "com.ddg.app",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "需要访问相册来选择要转换为拼豆图纸的图片",
+        "NSCameraUsageDescription": "需要访问相机来拍摄要转换为拼豆图纸的照片"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.ddg.app"
+      "package": "com.ddg.app",
+      "permissions": ["CAMERA", "READ_EXTERNAL_STORAGE"]
     },
     "plugins": [
       "expo-router",
-      "expo-image-picker",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "需要访问相机来拍摄要转换为拼豆图纸的照片",
+          "photosPermission": "需要访问相册来选择要转换为拼豆图纸的图片"
+        }
+      ],
       "expo-image-manipulator"
     ]
   }
