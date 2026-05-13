@@ -1,0 +1,16 @@
+{
+  "name": "@ddg/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./patternUtils": "./src/patternUtils.ts",
+    "./compressionUtils": "./src/compressionUtils.ts",
+    "./editUtils": "./src/editUtils.ts",
+    "./selectionUtils": "./src/selectionUtils.ts",
+    "./types": "./src/types.ts",
+    "./colorMap/colorSystemMapping.json": "./src/colorMap/colorSystemMapping.json",
+    "./colorMap/colorMap.json": "./src/colorMap/colorMap.json"
+  }
+}
