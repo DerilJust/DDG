@@ -13,6 +13,7 @@
   "dependencies": {
     "@ddg/shared": "file:../packages/shared",
     "@expo/vector-icons": "^14.0.0",
+    "@react-native-community/slider": "^5.2.0",
     "@shopify/react-native-skia": "^1.5.0",
     "expo": "~54.0.0",
     "expo-clipboard": "~8.0.0",
