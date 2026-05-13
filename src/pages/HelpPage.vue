@@ -744,12 +744,14 @@ onUnmounted(() => {
 @media (max-width: 767px) {
   .help-page {
     background: #f8f9fb;
+    min-height: auto;
   }
 
   .help-layout {
     flex-direction: column;
     width: 90%;
     margin: 0 auto;
+    min-height: auto;
   }
 
   .select-nav {
