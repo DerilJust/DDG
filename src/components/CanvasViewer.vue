@@ -4,12 +4,14 @@
     <div
       ref="container"
       class="canvas-viewer-container"
-      :style="{ cursor: isDragging ? 'grabbing' : 'grab' }"
+      :style="{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }"
       @wheel.prevent="handleWheel"
-      @mousedown="handleMouseDown"
-      @mousemove="handleMouseMove"
-      @mouseup="handleMouseUp"
-      @mouseleave="handleMouseUp"
+      @pointerdown="handleContainerPointerDown"
+      @pointermove="handleContainerPointerMove"
+      @pointerup="handleContainerPointerUp"
+      @pointerleave="handleContainerPointerUp"
+      @pointercancel="handleContainerPointerUp"
+      @lostpointercapture="handleContainerPointerUp"
     >
       <!-- 变换容器，通过CSS transform实现缩放和平移 -->
       <div class="canvas-transform" :style="transformStyle">
@@ -39,7 +41,7 @@
         <el-icon><FullScreen /></el-icon>
         重置视图
       </el-button>
-      <span class="control-hint">滚轮缩放 | 拖拽移动</span>
+      <span class="control-hint">滚轮/双指缩放 | 拖拽移动</span>
     </div>
   </div>
 </template>
@@ -113,10 +115,14 @@ const scale = ref<number>(1)
 const offsetX = ref<number>(0)
 const offsetY = ref<number>(0)
 
-// 鼠标拖拽相关状态
+// 指针拖拽相关状态
 const isDragging = ref<boolean>(false)
 const dragStartX = ref<number>(0)
 const dragStartY = ref<number>(0)
+
+// 多点触摸状态（用于双指缩放）
+const activePointers = ref<Map<number, PointerEvent>>(new Map())
+const lastPinchDistance = ref<number>(0)
 
 // 指针和选择相关状态
 const pointerDown = ref<boolean>(false)
@@ -242,28 +248,93 @@ const handleWheel = (e: WheelEvent) => {
   scale.value = newScale
 }
 
-// 处理鼠标按下（开始拖拖）
-const handleMouseDown = (e: MouseEvent) => {
-  // 只在不在canvas编辑时允许拖拖
-  if (props.editMode) return
-
-  isDragging.value = true
-  dragStartX.value = e.clientX - offsetX.value
-  dragStartY.value = e.clientY - offsetY.value
+// 计算两个触摸点之间的距离（双指缩放用）
+const getPinchDistance = (): number => {
+  const pointers = Array.from(activePointers.value.values())
+  if (pointers.length < 2) return 0
+  const dx = pointers[0].clientX - pointers[1].clientX
+  const dy = pointers[0].clientY - pointers[1].clientY
+  return Math.sqrt(dx * dx + dy * dy)
 }
 
-// 处理鼠标移动（拖拖或编辑）
-const handleMouseMove = (e: MouseEvent) => {
-  if (isDragging.value) {
-    // 实时更新偏移量
-    offsetX.value = e.clientX - dragStartX.value
-    offsetY.value = e.clientY - dragStartY.value
+// 计算双指中心点坐标
+const getPinchCenter = (): { x: number; y: number } => {
+  const pointers = Array.from(activePointers.value.values())
+  return {
+    x: (pointers[0].clientX + pointers[1].clientX) / 2,
+    y: (pointers[0].clientY + pointers[1].clientY) / 2
   }
 }
 
-// 处理鼠标抬起（结束拖拖）
-const handleMouseUp = (): void => {
-  isDragging.value = false
+// 处理容器指针按下（平移或缩放开始）
+const handleContainerPointerDown = (e: PointerEvent) => {
+  if (props.editMode) return
+
+  activePointers.value.set(e.pointerId, e)
+
+  if (activePointers.value.size === 1) {
+    isDragging.value = true
+    dragStartX.value = e.clientX - offsetX.value
+    dragStartY.value = e.clientY - offsetY.value
+  } else if (activePointers.value.size === 2) {
+    lastPinchDistance.value = getPinchDistance()
+    isDragging.value = false
+  }
+
+  if (container.value) {
+    container.value.setPointerCapture(e.pointerId)
+  }
+}
+
+// 处理容器指针移动（平移或缩放中）
+const handleContainerPointerMove = (e: PointerEvent) => {
+  if (!activePointers.value.has(e.pointerId)) return
+  activePointers.value.set(e.pointerId, e)
+
+  if (activePointers.value.size === 1 && isDragging.value) {
+    offsetX.value = e.clientX - dragStartX.value
+    offsetY.value = e.clientY - dragStartY.value
+  } else if (activePointers.value.size === 2) {
+    const currentDistance = getPinchDistance()
+    if (lastPinchDistance.value > 0) {
+      const scaleChange = currentDistance / lastPinchDistance.value
+      const newScale = Math.max(0.5, Math.min(3, scale.value * scaleChange))
+
+      const center = getPinchCenter()
+      if (container.value) {
+        const rect = container.value.getBoundingClientRect()
+        const cx = center.x - rect.left
+        const cy = center.y - rect.top
+        offsetX.value = cx - (cx - offsetX.value) * (newScale / scale.value)
+        offsetY.value = cy - (cy - offsetY.value) * (newScale / scale.value)
+      }
+
+      scale.value = newScale
+    }
+    lastPinchDistance.value = currentDistance
+  }
+}
+
+// 处理容器指针抬起（结束平移或缩放）
+const handleContainerPointerUp = (e: PointerEvent): void => {
+  activePointers.value.delete(e.pointerId)
+
+  if (activePointers.value.size === 0) {
+    isDragging.value = false
+    lastPinchDistance.value = 0
+  } else if (activePointers.value.size === 1) {
+    // 从双指变为单指，平滑过渡到拖拽
+    const remaining = activePointers.value.values().next().value
+    if (remaining) {
+      isDragging.value = true
+      dragStartX.value = remaining.clientX - offsetX.value
+      dragStartY.value = remaining.clientY - offsetY.value
+    }
+  }
+
+  if (container.value && e.pointerId != null) {
+    container.value.releasePointerCapture(e.pointerId)
+  }
 }
 
 // 处理Canvas指针按下（编辑）
