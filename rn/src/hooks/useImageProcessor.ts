@@ -20,7 +20,11 @@ function decodeBase64ToPixels(base64: string): Uint8ClampedArray | null {
   if (!img) return null
   const rgba = UPNG.toRGBA8(img)
   if (!rgba || !rgba.length) return null
-  return new Uint8ClampedArray(rgba[0] instanceof ArrayBuffer ? new Uint8Array(rgba[0] as ArrayBuffer) : rgba[0] as Uint8Array)
+  return new Uint8ClampedArray(
+    rgba[0] instanceof ArrayBuffer
+      ? new Uint8Array(rgba[0] as ArrayBuffer)
+      : (rgba[0] as Uint8Array)
+  )
 }
 
 export function useImageProcessor() {

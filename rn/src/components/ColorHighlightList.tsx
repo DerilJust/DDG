@@ -16,14 +16,14 @@ export default function ColorHighlightList() {
 
   return (
     <View>
-      <Text variant="titleMedium" style={styles.title}>颜色列表</Text>
+      <Text variant="titleMedium" style={styles.title}>
+        颜色列表
+      </Text>
       {colorStats.map((stat) => (
         <List.Item
           key={stat.color.hex}
           title={`${stat.code} (${stat.count})`}
-          left={() => (
-            <View style={[styles.swatch, { backgroundColor: stat.color.hex }]} />
-          )}
+          left={() => <View style={[styles.swatch, { backgroundColor: stat.color.hex }]} />}
           right={() => (
             <Checkbox
               status={highlighted.has(stat.color.hex) ? 'checked' : 'unchecked'}

@@ -17,7 +17,9 @@ export default function EditorPage() {
       {!hasImage ? (
         <View style={styles.empty}>
           <ImagePicker />
-          <Text variant="bodyMedium" style={styles.hint}>{infoText}</Text>
+          <Text variant="bodyMedium" style={styles.hint}>
+            {infoText}
+          </Text>
         </View>
       ) : (
         <View style={styles.editor}>

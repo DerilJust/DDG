@@ -30,7 +30,9 @@ export default function ImportSection() {
         placeholder="粘贴压缩字符串..."
         style={styles.input}
       />
-      <Button mode="contained" onPress={handleImport}>导入</Button>
+      <Button mode="contained" onPress={handleImport}>
+        导入
+      </Button>
     </View>
   )
 }

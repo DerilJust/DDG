@@ -64,7 +64,9 @@ export default function Controls() {
           step={1}
         />
 
-        <Text variant="labelMedium" style={styles.sectionTitle}>品牌</Text>
+        <Text variant="labelMedium" style={styles.sectionTitle}>
+          品牌
+        </Text>
         <SegmentedButtons
           value={selectedBrand}
           onValueChange={setSelectedBrand}

@@ -46,23 +46,18 @@ export default function EditPalette() {
         />
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.paletteScroll}
-      >
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.paletteScroll}>
         {colorStats.map((stat, i) => (
           <Chip
             key={`${stat.color.hex}-${i}`}
-            style={[
-              styles.chip,
-              selectedEditColor?.hex === stat.color.hex && styles.chipSelected
-            ]}
+            style={[styles.chip, selectedEditColor?.hex === stat.color.hex && styles.chipSelected]}
             onPress={() => setSelectedEditColor(stat.color)}
             compact
           >
             <View style={[styles.colorDot, { backgroundColor: stat.color.hex }]} />
-            <Text variant="labelSmall">{stat.code} ({stat.count})</Text>
+            <Text variant="labelSmall">
+              {stat.code} ({stat.count})
+            </Text>
           </Chip>
         ))}
       </ScrollView>

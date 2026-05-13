@@ -114,15 +114,33 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ originalImage: null, originalImageUrl: '', originalImageSize: { width: 0, height: 0 } })
   },
 
-  setGridWidth(w) { set({ gridWidth: Math.max(1, Math.round(w)) }) },
-  setGridHeight(h) { set({ gridHeight: Math.max(1, Math.round(h)) }) },
-  setColorCount(n) { set({ colorCount: Math.max(1, Math.min(50, Math.round(n))) }) },
-  setSelectedBrand(b) { set({ selectedBrand: b }) },
-  setShowNumbers(v) { set({ showNumbers: v }) },
-  setLockAspectRatio(v) { set({ lockAspectRatio: v }) },
-  setEditMode(v) { set({ editMode: v }) },
-  setSelectedTool(t) { set({ selectedTool: t }) },
-  setSelectedEditColor(c) { set({ selectedEditColor: c }) },
+  setGridWidth(w) {
+    set({ gridWidth: Math.max(1, Math.round(w)) })
+  },
+  setGridHeight(h) {
+    set({ gridHeight: Math.max(1, Math.round(h)) })
+  },
+  setColorCount(n) {
+    set({ colorCount: Math.max(1, Math.min(50, Math.round(n))) })
+  },
+  setSelectedBrand(b) {
+    set({ selectedBrand: b })
+  },
+  setShowNumbers(v) {
+    set({ showNumbers: v })
+  },
+  setLockAspectRatio(v) {
+    set({ lockAspectRatio: v })
+  },
+  setEditMode(v) {
+    set({ editMode: v })
+  },
+  setSelectedTool(t) {
+    set({ selectedTool: t })
+  },
+  setSelectedEditColor(c) {
+    set({ selectedEditColor: c })
+  },
 
   setPatternGrid(grid) {
     set({ patternGrid: grid })
@@ -147,7 +165,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         ? { r: 255, g: 255, b: 255, hex: '#FFFFFF', info: {} as Record<string, string> }
         : selectedEditColor
     if (!color) return
-    const code = selectedTool === 'eraser' ? '' : (color.info?.[selectedBrand] || '')
+    const code = selectedTool === 'eraser' ? '' : color.info?.[selectedBrand] || ''
 
     let nextGrid: PatternCell[][]
     if (selectedTool === 'fill') {
@@ -178,7 +196,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         ? { r: 255, g: 255, b: 255, hex: '#FFFFFF', info: {} as Record<string, string> }
         : selectedEditColor
     if (!color) return
-    const code = selectedTool === 'eraser' ? '' : (color.info?.[selectedBrand] || '')
+    const code = selectedTool === 'eraser' ? '' : color.info?.[selectedBrand] || ''
 
     const nextGrid = clonePatternGrid(patternGrid)
     for (let y = minY; y <= maxY; y++) {
@@ -237,7 +255,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     })
     get().refreshColorStats()
     const freshStats = get().colorStats
-    set({ infoText: `已导入: ${result.gridWidth}x${result.gridHeight} 网格, ${freshStats.length} 种颜色` })
+    set({
+      infoText: `已导入: ${result.gridWidth}x${result.gridHeight} 网格, ${freshStats.length} 种颜色`
+    })
     return true
   },
 
@@ -251,14 +271,14 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   loadColorData() {
     if (get().perlerColors.length) return
-    const colors = Object.entries(
-      colorSystemMapping as Record<string, Record<string, string>>
-    ).map(([hex, info]) => {
-      const r = parseInt(hex.substring(1, 3), 16)
-      const g = parseInt(hex.substring(3, 5), 16)
-      const b = parseInt(hex.substring(5, 7), 16)
-      return { r, g, b, hex, info }
-    })
+    const colors = Object.entries(colorSystemMapping as Record<string, Record<string, string>>).map(
+      ([hex, info]) => {
+        const r = parseInt(hex.substring(1, 3), 16)
+        const g = parseInt(hex.substring(3, 5), 16)
+        const b = parseInt(hex.substring(5, 7), 16)
+        return { r, g, b, hex, info }
+      }
+    )
     set({ perlerColors: colors })
   }
 }))

@@ -16,8 +16,14 @@ const BRANDS = [
 ]
 
 export default function ImageCropPage() {
-  const { imageUri, width: w, height: h } = useLocalSearchParams<{
-    imageUri: string; width: string; height: string
+  const {
+    imageUri,
+    width: w,
+    height: h
+  } = useLocalSearchParams<{
+    imageUri: string
+    width: string
+    height: string
   }>()
 
   const imageWidth = Number(w) || screenWidth
@@ -40,11 +46,14 @@ export default function ImageCropPage() {
 
   const displayHeight = (screenWidth - 32) / aspectRatio
 
-  const handleWidthChange = useCallback((val: number) => {
-    const w = Math.round(val)
-    setGridWidth(w)
-    setGridHeight(Math.max(1, Math.round(w / aspectRatio)))
-  }, [aspectRatio])
+  const handleWidthChange = useCallback(
+    (val: number) => {
+      const w = Math.round(val)
+      setGridWidth(w)
+      setGridHeight(Math.max(1, Math.round(w / aspectRatio)))
+    },
+    [aspectRatio]
+  )
 
   // Initialize grid from image aspect ratio
   useEffect(() => {
@@ -117,7 +126,9 @@ export default function ImageCropPage() {
         style={styles.input}
       />
 
-      <Text variant="labelLarge" style={styles.sectionTitle}>品牌</Text>
+      <Text variant="labelLarge" style={styles.sectionTitle}>
+        品牌
+      </Text>
       <SegmentedButtons
         value={selectedBrand}
         onValueChange={setSelectedBrand}

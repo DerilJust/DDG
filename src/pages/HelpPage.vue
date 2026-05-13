@@ -36,123 +36,125 @@
         </el-select>
 
         <el-main class="help-content">
-        <!-- 快速开始 -->
-        <section id="quick-start" class="doc-section">
-          <h2 class="section-title"><span class="title-number">1</span>快速开始</h2>
-          <div class="steps-grid">
-            <div
-              v-for="(s, i) in quickSteps"
-              :key="i"
-              :class="['step-card', `step-card--${i + 1}`]"
-            >
-              <div class="step-num">{{ i + 1 }}</div>
-              <div class="step-connector"></div>
-              <div class="step-body">
-                <h4>
-                  <el-icon :size="16"><component :is="s.icon" /></el-icon>{{ s.title }}
-                </h4>
-                <p>{{ s.desc }}</p>
+          <!-- 快速开始 -->
+          <section id="quick-start" class="doc-section">
+            <h2 class="section-title"><span class="title-number">1</span>快速开始</h2>
+            <div class="steps-grid">
+              <div
+                v-for="(s, i) in quickSteps"
+                :key="i"
+                :class="['step-card', `step-card--${i + 1}`]"
+              >
+                <div class="step-num">{{ i + 1 }}</div>
+                <div class="step-connector"></div>
+                <div class="step-body">
+                  <h4>
+                    <el-icon :size="16"><component :is="s.icon" /></el-icon>{{ s.title }}
+                  </h4>
+                  <p>{{ s.desc }}</p>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <!-- 编辑器使用 -->
-        <section id="editor" class="doc-section">
-          <h2 class="section-title"><span class="title-number">2</span>编辑器使用</h2>
-          <div class="info-card">
-            <h4>编辑模式</h4>
-            <p>点击底部工具栏的<strong>编辑</strong>开关进入编辑模式，使用各种工具修改图纸。</p>
-          </div>
-          <div class="info-grid">
-            <div v-for="tool in editorTools" :key="tool.name" class="info-card tool-chip">
-              <el-icon :size="18"><component :is="tool.icon" /></el-icon>
-              <span class="tool-name">{{ tool.name }}</span>
-              <span class="tool-desc">{{ tool.desc }}</span>
-            </div>
-          </div>
-          <div class="info-grid">
+          <!-- 编辑器使用 -->
+          <section id="editor" class="doc-section">
+            <h2 class="section-title"><span class="title-number">2</span>编辑器使用</h2>
             <div class="info-card">
-              <h4>撤销 / 重做</h4>
-              <p>支持最多 <strong>50 步</strong>撤销历史，可使用快捷键操作。</p>
+              <h4>编辑模式</h4>
+              <p>点击底部工具栏的<strong>编辑</strong>开关进入编辑模式，使用各种工具修改图纸。</p>
             </div>
-            <div class="info-card">
-              <h4>边缘扩展</h4>
-              <p>拖拽图纸四边的蓝色手柄可在任意方向扩展图纸，新增格子为空白。</p>
+            <div class="info-grid">
+              <div v-for="tool in editorTools" :key="tool.name" class="info-card tool-chip">
+                <el-icon :size="18"><component :is="tool.icon" /></el-icon>
+                <span class="tool-name">{{ tool.name }}</span>
+                <span class="tool-desc">{{ tool.desc }}</span>
+              </div>
             </div>
-            <div class="info-card">
-              <h4>全部填充</h4>
-              <p>选择颜色后点击"全部填充"可将整个图纸填充为该颜色。</p>
+            <div class="info-grid">
+              <div class="info-card">
+                <h4>撤销 / 重做</h4>
+                <p>支持最多 <strong>50 步</strong>撤销历史，可使用快捷键操作。</p>
+              </div>
+              <div class="info-card">
+                <h4>边缘扩展</h4>
+                <p>拖拽图纸四边的蓝色手柄可在任意方向扩展图纸，新增格子为空白。</p>
+              </div>
+              <div class="info-card">
+                <h4>全部填充</h4>
+                <p>选择颜色后点击"全部填充"可将整个图纸填充为该颜色。</p>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <!-- 参数说明 -->
-        <section id="params" class="doc-section">
-          <h2 class="section-title"><span class="title-number">3</span>参数说明</h2>
-          <div class="param-table">
-            <div v-for="p in paramsList" :key="p.name" class="param-row">
-              <div class="param-name">{{ p.name }}</div>
-              <div class="param-desc">{{ p.desc }}</div>
+          <!-- 参数说明 -->
+          <section id="params" class="doc-section">
+            <h2 class="section-title"><span class="title-number">3</span>参数说明</h2>
+            <div class="param-table">
+              <div v-for="p in paramsList" :key="p.name" class="param-row">
+                <div class="param-name">{{ p.name }}</div>
+                <div class="param-desc">{{ p.desc }}</div>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <!-- 快捷键参考 -->
-        <section id="shortcuts" class="doc-section">
-          <h2 class="section-title"><span class="title-number">4</span>快捷键参考</h2>
-          <div class="preset-group shortcut-table-wrap">
-            <table class="shortcut-table">
-              <thead>
-                <tr>
-                  <th>功能</th>
-                  <th>默认预设</th>
-                  <th>类PS风格</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in combinedShortcutRows" :key="row.label">
-                  <td class="fn-col">{{ row.label }}</td>
-                  <td class="key-col">
-                    <span v-for="key in row.defaultKeys" :key="key" class="keycap">{{ key }}</span>
-                  </td>
-                  <td class="key-col">
-                    <span v-for="key in row.psKeys" :key="key" class="keycap">{{ key }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="hint">
-            <el-icon><InfoFilled /></el-icon>
-            在编辑器侧边栏中可以切换快捷键预设或自定义每个快捷键
-          </p>
-        </section>
+          <!-- 快捷键参考 -->
+          <section id="shortcuts" class="doc-section">
+            <h2 class="section-title"><span class="title-number">4</span>快捷键参考</h2>
+            <div class="preset-group shortcut-table-wrap">
+              <table class="shortcut-table">
+                <thead>
+                  <tr>
+                    <th>功能</th>
+                    <th>默认预设</th>
+                    <th>类PS风格</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in combinedShortcutRows" :key="row.label">
+                    <td class="fn-col">{{ row.label }}</td>
+                    <td class="key-col">
+                      <span v-for="key in row.defaultKeys" :key="key" class="keycap">{{
+                        key
+                      }}</span>
+                    </td>
+                    <td class="key-col">
+                      <span v-for="key in row.psKeys" :key="key" class="keycap">{{ key }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="hint">
+              <el-icon><InfoFilled /></el-icon>
+              在编辑器侧边栏中可以切换快捷键预设或自定义每个快捷键
+            </p>
+          </section>
 
-        <!-- 导出说明 -->
-        <section id="export" class="doc-section">
-          <h2 class="section-title"><span class="title-number">5</span>导出说明</h2>
-          <div class="info-grid">
-            <div class="info-card">
-              <h4>下载 PNG</h4>
-              <p>在"导出预览"标签页或侧边栏点击下载按钮，获得带坐标轴边框的图纸图片。</p>
+          <!-- 导出说明 -->
+          <section id="export" class="doc-section">
+            <h2 class="section-title"><span class="title-number">5</span>导出说明</h2>
+            <div class="info-grid">
+              <div class="info-card">
+                <h4>下载 PNG</h4>
+                <p>在"导出预览"标签页或侧边栏点击下载按钮，获得带坐标轴边框的图纸图片。</p>
+              </div>
+              <div class="info-card">
+                <h4>导出倍率</h4>
+                <p>支持 1x ~ 4x 倍率导出，获取更高分辨率图片。</p>
+              </div>
+              <div class="info-card">
+                <h4>压缩字符串</h4>
+                <p>使用 RLE 行程编码压缩图纸数据，方便在专注拼豆页面导入分享。</p>
+              </div>
             </div>
-            <div class="info-card">
-              <h4>导出倍率</h4>
-              <p>支持 1x ~ 4x 倍率导出，获取更高分辨率图片。</p>
-            </div>
-            <div class="info-card">
-              <h4>压缩字符串</h4>
-              <p>使用 RLE 行程编码压缩图纸数据，方便在专注拼豆页面导入分享。</p>
-            </div>
-          </div>
-        </section>
+          </section>
 
-        <footer class="help-footer">
-          <span>拼豆图纸生成器 DDG</span>
-          <a href="https://github.com/DerilJust/DDG" target="_blank">GitHub</a>
-        </footer>
-      </el-main>
+          <footer class="help-footer">
+            <span>拼豆图纸生成器 DDG</span>
+            <a href="https://github.com/DerilJust/DDG" target="_blank">GitHub</a>
+          </footer>
+        </el-main>
       </div>
 
       <!-- Loading overlay -->
@@ -738,7 +740,6 @@ onUnmounted(() => {
 .help-footer a:hover {
   text-decoration: underline;
 }
-
 
 /* ---- responsive ---- */
 @media (max-width: 767px) {

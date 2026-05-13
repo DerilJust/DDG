@@ -21,11 +21,7 @@ export default function ExportPreview() {
     <View style={styles.container}>
       <Text variant="titleMedium">导出图纸</Text>
       <View style={styles.buttons}>
-        <Button
-          mode="contained"
-          onPress={handleExportCompressed}
-          icon="clipboard-text"
-        >
+        <Button mode="contained" onPress={handleExportCompressed} icon="clipboard-text">
           复制压缩字符串
         </Button>
         <Text variant="bodySmall" style={styles.hint}>

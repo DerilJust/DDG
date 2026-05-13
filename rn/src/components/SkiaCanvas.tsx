@@ -1,12 +1,6 @@
 import React, { useMemo } from 'react'
 import { View, StyleSheet, Dimensions } from 'react-native'
-import {
-  Canvas,
-  Rect,
-  Text as SkiaText,
-  Group,
-  useFont
-} from '@shopify/react-native-skia'
+import { Canvas, Rect, Text as SkiaText, Group, useFont } from '@shopify/react-native-skia'
 import { GestureDetector } from 'react-native-gesture-handler'
 import { useDerivedValue } from 'react-native-reanimated'
 import { useAppStore } from '../store/appStore'
@@ -50,11 +44,7 @@ function SkiaCanvas({ editMode, onCellPress }: SkiaCanvasProps) {
   }, [patternGrid])
 
   const transform = useDerivedValue(() => {
-    return [
-      { translateX: offsetX.value },
-      { translateY: offsetY.value },
-      { scale: scale.value }
-    ]
+    return [{ translateX: offsetX.value }, { translateY: offsetY.value }, { scale: scale.value }]
   })
 
   return (
